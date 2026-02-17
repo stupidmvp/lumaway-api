@@ -80,7 +80,7 @@ const app = new FlexApp({
         }) as any,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-api-key'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-api-key', 'x-organization-id', 'x-project-id'],
         exposedHeaders: ['Authorization'], // Critical for some clients to "see" the token
     } as any,
 });

@@ -1,0 +1,4 @@
+packages:
+  - "."
+patchedDependencies:
+  "@flex-donec/core": patches/@flex-donec__core.patch

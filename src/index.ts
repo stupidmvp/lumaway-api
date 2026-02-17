@@ -68,6 +68,7 @@ dotenv.config();
 const app = new FlexApp({
     db: drizzleAdapter,
     port: Number(process.env.PORT) || 3001,
+    host: '0.0.0.0',
     cors: {
         origin: ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
             const allowedOrigins = process.env.ALLOWED_ORIGINS

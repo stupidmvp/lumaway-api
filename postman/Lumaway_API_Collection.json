@@ -1,0 +1,935 @@
+{
+    "info": {
+        "_postman_id": "lumaway-api-collection",
+        "name": "LumaWay API",
+        "description": "Complete API contracts for LumaWay Backend (MicroSaaS). Includes Authentication, User Profile, Organizations, RBAC Admin, Invitations, Walkthroughs, and Public SDK endpoints.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "🔐 Authentication",
+            "item": [
+                {
+                    "name": "Login (Local Strategy)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.accessToken) {",
+                                    "    pm.environment.set('token', jsonData.accessToken);",
+                                    "}",
+                                    "if (jsonData.user && jsonData.user.id) {",
+                                    "    pm.environment.set('userId', jsonData.user.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"strategy\": \"local\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/authentication",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["authentication"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Register",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"newuser@example.com\",\n    \"password\": \"password123\",\n    \"firstName\": \"New\",\n    \"lastName\": \"User\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth-register",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth-register"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{email}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth-forgot-password",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth-forgot-password"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"<reset-token-from-email>\",\n    \"newPassword\": \"newpassword123\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth-reset-password",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth-reset-password"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Change Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"currentPassword\": \"{{password}}\",\n    \"newPassword\": \"newpassword123\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth-change-password",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth-change-password"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "🚀 Onboarding",
+            "item": [
+                {
+                    "name": "Complete Onboarding",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"organizationName\": \"My Company\",\n    \"organizationSlug\": \"my-company\",\n    \"projectName\": \"First Project\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth-onboarding",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth-onboarding"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Skip Onboarding",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth-onboarding-skip",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth-onboarding-skip"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "👤 Me (User Profile)",
+            "item": [
+                {
+                    "name": "Get Current User",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/me",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["me"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Current User",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"firstName\": \"Updated\",\n    \"lastName\": \"Name\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/me/0",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["me", "0"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Preferences",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"preferences\": {\n        \"theme\": \"dark\",\n        \"language\": \"es\"\n    }\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/me/0",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["me", "0"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "🏢 Me - Organizations",
+            "item": [
+                {
+                    "name": "List My Organizations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/me-organizations",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["me-organizations"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Active Organization",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+                            { "key": "X-Organization-Id", "value": "{{organizationId}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/me-organization",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["me-organization"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Active Organization",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+                            { "key": "X-Organization-Id", "value": "{{organizationId}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Org Name\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/me-organization/0",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["me-organization", "0"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Organization",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"New Organization\",\n    \"slug\": \"new-org\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/user-organizations",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["user-organizations"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Organization",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/user-organizations/{{organizationId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["user-organizations", "{{organizationId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Leave Organization",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"organizationId\": \"{{organizationId}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/user-organization-leave",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["user-organization-leave"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "👥 Org Members",
+            "item": [
+                {
+                    "name": "List Org Members",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/org-members?orgId={{organizationId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["org-members"],
+                            "query": [
+                                { "key": "orgId", "value": "{{organizationId}}" }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Member Role",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"role\": \"admin\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/org-members/{{memberId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["org-members", "{{memberId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Remove Member",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/org-members/{{memberId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["org-members", "{{memberId}}"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "📋 Projects",
+            "item": [
+                {
+                    "name": "List Projects",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/projects",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["projects"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"My New Project\",\n    \"organizationId\": \"{{organizationId}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/projects",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["projects"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Project",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/projects/{{projectId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["projects", "{{projectId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Project",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Renamed Project\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/projects/{{projectId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["projects", "{{projectId}}"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "🚶 Walkthroughs",
+            "item": [
+                {
+                    "name": "List Walkthroughs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/walkthroughs",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["walkthroughs"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Walkthrough",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Onboarding Guide\",\n    \"projectId\": \"{{projectId}}\",\n    \"steps\": [\n        {\n            \"id\": \"step-1\",\n            \"title\": \"Welcome\",\n            \"content\": \"Hello world\"\n        }\n    ],\n    \"isPublished\": false\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/walkthroughs",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["walkthroughs"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Restore Walkthrough Version",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"versionId\": \"{{versionId}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/walkthrough-restore/{{walkthroughId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["walkthrough-restore", "{{walkthroughId}}"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "✉️ Invitations",
+            "item": [
+                {
+                    "name": "Get Invitation Details (public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/invitation-details/{{invitationToken}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["invitation-details", "{{invitationToken}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Accept Invitation",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"{{invitationToken}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/invitation-accept",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["invitation-accept"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reject Invitation",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"{{invitationToken}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/invitation-reject",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["invitation-reject"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "🔔 Notifications",
+            "item": [
+                {
+                    "name": "List Notifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/notifications",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["notifications"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Mark All Notifications Read",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/notification-mark-read",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["notification-mark-read"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "👑 Admin - Users",
+            "item": [
+                {
+                    "name": "List All Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-users?$limit=25&$skip=0",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-users"],
+                            "query": [
+                                { "key": "$limit", "value": "25" },
+                                { "key": "$skip", "value": "0" }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Search Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-users?search=fabian&status=active",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-users"],
+                            "query": [
+                                { "key": "search", "value": "fabian" },
+                                { "key": "status", "value": "active" }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-users/{{targetUserId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-users", "{{targetUserId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update User (status/name)",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": \"suspended\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-users/{{targetUserId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-users", "{{targetUserId}}"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "👑 Admin - Roles & Permissions",
+            "item": [
+                {
+                    "name": "List All Roles",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-roles",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-roles"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Role",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"editor\",\n    \"description\": \"Can edit content\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-roles",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-roles"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Role",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"description\": \"Updated description\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-roles/{{roleId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-roles", "{{roleId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Role",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-roles/{{roleId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-roles", "{{roleId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Assign Roles to User",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"roleIds\": [\"{{roleId}}\"]\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-user-roles/{{targetUserId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-user-roles", "{{targetUserId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Role Permissions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-role-permissions/{{roleId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-role-permissions", "{{roleId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Set Role Permissions",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"permissionIds\": [\"{{permissionId}}\"]\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-role-permissions/{{roleId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-role-permissions", "{{roleId}}"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List All Permissions (grouped by module)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin-permissions",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["admin-permissions"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "🏢 Organizations (CRUD)",
+            "item": [
+                {
+                    "name": "List Organizations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/organizations",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["organizations"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Organization (CRUD)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"New Client Inc\",\n    \"slug\": \"new-client\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/organizations",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["organizations"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "👥 Users (CRUD)",
+            "item": [
+                {
+                    "name": "List Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/users",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["users"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "📡 Public / SDK",
+            "item": [
+                {
+                    "name": "Get Client Walkthroughs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "x-api-key", "value": "{{apiKey}}", "type": "text" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/client-walkthroughs",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["client-walkthroughs"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ]
+}

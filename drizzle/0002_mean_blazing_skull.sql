@@ -1,0 +1,4 @@
+ALTER TABLE "walkthroughs" ADD COLUMN "previous_walkthrough_id" uuid;--> statement-breakpoint
+ALTER TABLE "walkthroughs" ADD COLUMN "next_walkthrough_id" uuid;--> statement-breakpoint
+ALTER TABLE "walkthroughs" ADD CONSTRAINT "walkthroughs_previous_walkthrough_id_walkthroughs_id_fk" FOREIGN KEY ("previous_walkthrough_id") REFERENCES "public"."walkthroughs"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "walkthroughs" ADD CONSTRAINT "walkthroughs_next_walkthrough_id_walkthroughs_id_fk" FOREIGN KEY ("next_walkthrough_id") REFERENCES "public"."walkthroughs"("id") ON DELETE set null ON UPDATE no action;

@@ -1,0 +1,74 @@
+diff --git a/dist/app/RouteManager.js b/dist/app/RouteManager.js
+index cc44a08b3f2a0eac77e2ed044103dfe166e048b1..4e08d149577170c50d9ab987cb37851cb053aa88 100644
+--- a/dist/app/RouteManager.js
++++ b/dist/app/RouteManager.js
+@@ -49,29 +49,36 @@ class RouteManager {
+                 for (const hook of beforeHooks) {
+                     context = await hook(context);
+                 }
+-                // Execute service method with data from hooks
++                // If a before hook already set context.result, skip the service method
++                // (FeathersJS-style short-circuiting)
+                 let result;
+-                switch (method) {
+-                    case 'find':
+-                        result = await service.find(context.params.query);
+-                        break;
+-                    case 'get':
+-                        result = await service.get(req.params.id, context.params);
+-                        break;
+-                    case 'create':
+-                        result = await service.create(context.data || req.body, context.params);
+-                        break;
+-                    case 'patch':
+-                        result = await service.patch(req.params.id, context.data || req.body, context.params);
+-                        break;
+-                    case 'remove':
+-                        result = await service.remove(req.params.id, context.params);
+-                        break;
+-                    default:
+-                        throw new Error(`Unknown method: ${method}`);
++                if (context.result !== undefined && context.result !== null) {
++                    result = context.result;
+                 }
+-                // Execute AFTER hooks
+-                context = service.createHookContext(this.flexApp, method, 'after', params, context.data, result);
++                else {
++                    // Execute service method with data from hooks
++                    switch (method) {
++                        case 'find':
++                            result = await service.find(context.params.query);
++                            break;
++                        case 'get':
++                            result = await service.get(req.params.id, context.params);
++                            break;
++                        case 'create':
++                            result = await service.create(context.data || req.body, context.params);
++                            break;
++                        case 'patch':
++                            result = await service.patch(req.params.id, context.data || req.body, context.params);
++                            break;
++                        case 'remove':
++                            result = await service.remove(req.params.id, context.params);
++                            break;
++                        default:
++                            throw new Error(`Unknown method: ${method}`);
++                    }
++                }
++                // Execute AFTER hooks (pass enriched params from before hooks)
++                context = service.createHookContext(this.flexApp, method, 'after', context.params, context.data, result);
+                 const afterHooks = [
+                     ...(service.after?.[method] || []),
+                     ...(service.after?.all || [])
+diff --git a/dist/services/BaseService.js b/dist/services/BaseService.js
+index f4984846b358b7833a85f1438187e667060a6b61..0a2213f7122b93990539889c750777cff4c61877 100644
+--- a/dist/services/BaseService.js
++++ b/dist/services/BaseService.js
+@@ -95,6 +95,7 @@ class BaseService {
+             method,
+             type,
+             params,
++            id: params?.route?.id,
+             data,
+             result,
+             error

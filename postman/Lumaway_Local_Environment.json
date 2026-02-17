@@ -1,0 +1,82 @@
+{
+    "id": "lumaway-local-env",
+    "name": "LumaWay Local",
+    "values": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3001",
+            "enabled": true
+        },
+        {
+            "key": "email",
+            "value": "fabiandonec@gmail.com",
+            "enabled": true
+        },
+        {
+            "key": "password",
+            "value": "password123",
+            "enabled": true
+        },
+        {
+            "key": "token",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "organizationId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "projectId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "apiKey",
+            "value": "demo-key",
+            "enabled": true
+        },
+        {
+            "key": "walkthroughId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "versionId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "memberId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "roleId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "permissionId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "targetUserId",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "invitationToken",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "userId",
+            "value": "",
+            "enabled": true
+        }
+    ],
+    "_postman_variable_scope": "environment"
+}

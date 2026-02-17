@@ -69,12 +69,28 @@ const app = new FlexApp({
     db: drizzleAdapter,
     port: Number(process.env.PORT) || 3001,
     cors: {
-        origin: [
-            'https://lumaway-cms.vercel.app',
-            'http://localhost:3000',
-            'http://localhost:3001',
-            ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
-        ],
+        origin: ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+            const whitelist = [
+                'https://lumaway-cms.vercel.app',
+                'http://localhost:3000',
+                'http://localhost:3001',
+                ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+            ];
+
+            // 1. Permitir si está en la lista blanca o no hay origin (ej. servidores)
+            if (!origin || whitelist.includes(origin)) {
+                return callback(null, true);
+            }
+
+            // 2. Para Luma SDK/Widget: Permitir cualquier origen que empiece con http
+            // Nota: Al devolver true, 'cors' reflejará el Origin en Access-Control-Allow-Origin
+            // permitiendo credentials: true
+            if (origin.startsWith('http')) {
+                return callback(null, true);
+            }
+
+            callback(new Error('Not allowed by CORS'));
+        }) as any,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],

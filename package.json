@@ -14,6 +14,11 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix"
   },
+  "pnpm": {
+    "patchedDependencies": {
+      "@flex-donec/core": "patches/@flex-donec__core.patch"
+    }
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.990.0",
     "@aws-sdk/s3-request-presigner": "^3.990.0",

@@ -70,21 +70,28 @@ const app = new FlexApp({
     port: Number(process.env.PORT) || 3001,
     cors: {
         origin: ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+            const allowedOrigins = process.env.ALLOWED_ORIGINS
+                ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+                : [];
+
             const whitelist = [
                 'https://lumaway-cms.vercel.app',
                 'http://localhost:3000',
                 'http://localhost:3001',
-                ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+                ...allowedOrigins,
             ];
 
+            // Debug logging (will show in Railway build/deploy logs)
+            if (process.env.NODE_ENV !== 'test') {
+                console.log(`[CORS Request] Origin: ${origin}`);
+            }
+
             // 1. Permitir si está en la lista blanca o no hay origin (ej. servidores)
-            if (!origin || whitelist.includes(origin)) {
+            if (!origin || whitelist.includes(origin) || whitelist.includes('*')) {
                 return callback(null, true);
             }
 
             // 2. Para Luma SDK/Widget: Permitir cualquier origen que empiece con http
-            // Nota: Al devolver true, 'cors' reflejará el Origin en Access-Control-Allow-Origin
-            // permitiendo credentials: true
             if (origin.startsWith('http')) {
                 return callback(null, true);
             }

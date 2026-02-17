@@ -70,21 +70,36 @@ const app = new FlexApp({
     port: Number(process.env.PORT) || 3001,
     host: '0.0.0.0',
     cors: {
-        origin: true as any,
+        origin: ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+            // Log for every preflight/request to see what the browser sends
+            console.log(`[CORS Check] Origin: ${origin}`);
+
+            // Allow all for now during debugging but reflecting to avoid standard '*' issues with credentials
+            // This is effectively "origin: true" but with manual logging
+            return callback(null, true);
+        }) as any,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-api-key'],
-    },
+        exposedHeaders: ['Authorization'], // Critical for some clients to "see" the token
+    } as any,
 });
 
-// Middleware for detailed error logging (Deployment debugging)
+// Middleware for deep authentication diagnostics
 app.use((req, res, next) => {
     const oldSend = res.send;
     res.send = function (data) {
         if (res.statusCode === 401) {
-            console.log(`[401 Unauthorized] path: ${req.path} | origin: ${req.headers.origin}`);
-            console.log(`[401 Details] body:`, req.body);
-            console.log(`[401 Headers] auth:`, req.headers.authorization ? 'present' : 'missing');
+            const authHeader = req.headers.authorization || '';
+            const tokenSnippet = authHeader.startsWith('Bearer ')
+                ? `${authHeader.substring(0, 15)}...${authHeader.substring(authHeader.length - 5)}`
+                : 'NONE';
+
+            console.log(`[401 Diagnostic]`);
+            console.log(`  Path: ${req.method} ${req.path}`);
+            console.log(`  Origin: ${req.headers.origin}`);
+            console.log(`  Auth Header: ${tokenSnippet} (Total length: ${authHeader.length})`);
+            console.log(`  JWT_SECRET present: ${process.env.JWT_SECRET ? 'YES' : 'NO'}`);
         }
         return oldSend.apply(res, arguments as any);
     };

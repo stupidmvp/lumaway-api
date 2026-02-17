@@ -70,38 +70,25 @@ const app = new FlexApp({
     port: Number(process.env.PORT) || 3001,
     host: '0.0.0.0',
     cors: {
-        origin: ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-            const allowedOrigins = process.env.ALLOWED_ORIGINS
-                ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-                : [];
-
-            const whitelist = [
-                'http://localhost:3000',
-                'http://localhost:3001',
-                ...allowedOrigins,
-            ];
-
-            // Debug logging (will show in Railway build/deploy logs)
-            if (process.env.NODE_ENV !== 'test') {
-                console.log(`[CORS Request] Origin: ${origin}`);
-            }
-
-            // 1. Permitir si está en la lista blanca o no hay origin (ej. servidores)
-            if (!origin || whitelist.includes(origin) || whitelist.includes('*')) {
-                return callback(null, true);
-            }
-
-            // 2. Para Luma SDK/Widget: Permitir cualquier origen que empiece con http
-            if (origin.startsWith('http')) {
-                return callback(null, true);
-            }
-
-            callback(new Error('Not allowed by CORS'));
-        }) as any,
+        origin: true as any,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-api-key'],
     },
+});
+
+// Middleware for detailed error logging (Deployment debugging)
+app.use((req, res, next) => {
+    const oldSend = res.send;
+    res.send = function (data) {
+        if (res.statusCode === 401) {
+            console.log(`[401 Unauthorized] path: ${req.path} | origin: ${req.headers.origin}`);
+            console.log(`[401 Details] body:`, req.body);
+            console.log(`[401 Headers] auth:`, req.headers.authorization ? 'present' : 'missing');
+        }
+        return oldSend.apply(res, arguments as any);
+    };
+    next();
 });
 
 // Configure Auth

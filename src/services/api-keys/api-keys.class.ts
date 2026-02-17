@@ -8,20 +8,13 @@ export class ApiKeysService extends DrizzleService<typeof apiKeys> {
     }
 
     /**
-     * Override primary key column — api_keys uses `key` (text) instead of the default `id`.
-     */
-    getPrimaryKey() {
-        return this.getColumn('key');
-    }
-
-    /**
      * Override get — base class hardcodes getColumn('id'), but our PK is `key`.
      */
     async get(id: string, params?: any) {
         const result = await (this as any).storage
             .select()
-            .from(this.table)
-            .where(eq(this.getColumn('key'), id))
+            .from((this as any).table)
+            .where(eq((this as any).getColumn('key'), id))
             .limit(1);
 
         if (result.length === 0) {

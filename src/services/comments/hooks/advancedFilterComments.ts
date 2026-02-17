@@ -105,7 +105,7 @@ export const advancedFilterComments = async (context: HookContext) => {
         const entries = Object.entries(sortParam);
         if (entries.length > 0) {
             const [, dir] = entries[0];
-            if (dir === '-1' || dir === -1 || dir === 'desc') {
+            if (String(dir) === '-1' || (dir as any) === 'desc') {
                 orderFn = desc(comments.createdAt);
             }
         }

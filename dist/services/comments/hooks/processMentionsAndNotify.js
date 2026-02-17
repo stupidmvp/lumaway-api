@@ -4,19 +4,17 @@ exports.processMentionsAndNotify = void 0;
 const adapters_1 = require("../../../adapters");
 const schema_1 = require("../../../db/schema");
 const drizzle_orm_1 = require("drizzle-orm");
+const notificationDispatcher_1 = require("../../../providers/notifications/notificationDispatcher");
 /**
- * Extracts @[userId] mention tokens from comment content.
+ * Extracts ALL @[userId] mention tokens from comment content (including self-mentions).
  */
-function extractMentionedUserIds(content, authorId) {
+function extractAllMentionedUserIds(content) {
     const mentionRegex = /@\[([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/g;
     const ids = new Set();
     let match;
     while ((match = mentionRegex.exec(content)) !== null) {
-        const userId = match[1];
-        // Don't include self-mentions
-        if (userId !== authorId) {
-            ids.add(userId);
-        }
+        if (match[1])
+            ids.add(match[1]);
     }
     return Array.from(ids);
 }
@@ -56,12 +54,17 @@ async function getUserDisplayName(userId) {
 }
 /**
  * After hook on create: processes @mentions in comment content,
- * creates comment_mentions records, and generates notifications.
+ * creates comment_mentions records, and generates notifications + emails.
  *
  * Also handles:
  * - Reply notifications (comment_reply)
  * - Correction notifications
  * - Announcement notifications (to all project members)
+ *
+ * Social-media rules:
+ * - No self-notifications
+ * - Deduplication: each user is notified at most once per comment
+ * - Email delivery respects user preferences via dispatchNotification
  */
 const processMentionsAndNotify = async (context) => {
     const comment = context.result;
@@ -73,10 +76,19 @@ const processMentionsAndNotify = async (context) => {
     const humanBody = (await humanizeContent(comment.content)).substring(0, 200);
     // Track who has already been notified to avoid duplicates
     const notifiedUserIds = new Set([authorId]);
+    // Build shared metadata and URL for email CTAs
+    const baseMetadata = {
+        projectId: comment.projectId,
+        commentId: comment.id,
+        targetType: comment.targetType,
+        targetId: comment.targetId,
+        stepId: comment.stepId,
+    };
+    const ctaUrl = (0, notificationDispatcher_1.buildCommentUrl)(baseMetadata);
     // ── 1. Process @mentions ──────────────────────────────────
-    const mentionedUserIds = extractMentionedUserIds(comment.content, authorId);
+    const mentionedUserIds = extractAllMentionedUserIds(comment.content);
     for (const mentionedUserId of mentionedUserIds) {
-        // Insert mention record
+        // Always insert mention record (including self-mentions) for data integrity
         try {
             await adapters_1.db.insert(schema_1.commentMentions).values({
                 commentId: comment.id,
@@ -86,20 +98,27 @@ const processMentionsAndNotify = async (context) => {
         catch {
             // Ignore duplicate (unique constraint)
         }
-        // Create mention notification
-        await adapters_1.db.insert(schema_1.notifications).values({
-            userId: mentionedUserId,
-            type: 'mention',
-            title: `${authorName} mentioned you`,
-            body: humanBody,
-            metadata: {
+        // Only send notification if it's NOT a self-mention
+        if (mentionedUserId !== authorId) {
+            await (0, notificationDispatcher_1.dispatchNotification)({
+                userId: mentionedUserId,
+                type: 'mention',
                 projectId: comment.projectId,
-                commentId: comment.id,
-                targetType: comment.targetType,
-                targetId: comment.targetId,
-                stepId: comment.stepId,
-            },
-        });
+                title: `${authorName} mentioned you`,
+                body: humanBody,
+                metadata: baseMetadata,
+                email: {
+                    subject: `${authorName} mentioned you in a comment on LumaWay`,
+                    html: (0, notificationDispatcher_1.buildNotificationEmail)({
+                        heading: 'You were mentioned',
+                        body: `<strong>${authorName}</strong> mentioned you in a comment: <em>"${humanBody}"</em>`,
+                        ctaLabel: 'View Comment',
+                        ctaUrl,
+                    }),
+                    text: `${authorName} mentioned you in a comment: "${humanBody}"\n\nView it here: ${ctaUrl}`,
+                },
+            });
+        }
         notifiedUserIds.add(mentionedUserId);
     }
     // ── 2. Reply notification ─────────────────────────────────
@@ -110,17 +129,25 @@ const processMentionsAndNotify = async (context) => {
             .where((0, drizzle_orm_1.eq)(schema_1.comments.id, comment.parentId))
             .limit(1);
         if (parentComment && !notifiedUserIds.has(parentComment.userId)) {
-            await adapters_1.db.insert(schema_1.notifications).values({
+            await (0, notificationDispatcher_1.dispatchNotification)({
                 userId: parentComment.userId,
                 type: 'comment_reply',
+                projectId: comment.projectId,
                 title: `${authorName} replied to your comment`,
                 body: humanBody,
                 metadata: {
-                    projectId: comment.projectId,
-                    commentId: comment.id,
+                    ...baseMetadata,
                     parentCommentId: comment.parentId,
-                    targetType: comment.targetType,
-                    targetId: comment.targetId,
+                },
+                email: {
+                    subject: `${authorName} replied to your comment on LumaWay`,
+                    html: (0, notificationDispatcher_1.buildNotificationEmail)({
+                        heading: 'New reply to your comment',
+                        body: `<strong>${authorName}</strong> replied to your comment: <em>"${humanBody}"</em>`,
+                        ctaLabel: 'View Reply',
+                        ctaUrl,
+                    }),
+                    text: `${authorName} replied to your comment: "${humanBody}"\n\nView it here: ${ctaUrl}`,
                 },
             });
             notifiedUserIds.add(parentComment.userId);
@@ -135,17 +162,22 @@ const processMentionsAndNotify = async (context) => {
             .where((0, drizzle_orm_1.eq)(schema_1.projectMembers.projectId, comment.projectId));
         for (const member of editorsAndOwners) {
             if ((member.role === 'owner' || member.role === 'editor') && !notifiedUserIds.has(member.userId)) {
-                await adapters_1.db.insert(schema_1.notifications).values({
+                await (0, notificationDispatcher_1.dispatchNotification)({
                     userId: member.userId,
                     type: 'correction',
+                    projectId: comment.projectId,
                     title: `${authorName} flagged a correction`,
                     body: humanBody,
-                    metadata: {
-                        projectId: comment.projectId,
-                        commentId: comment.id,
-                        targetType: comment.targetType,
-                        targetId: comment.targetId,
-                        stepId: comment.stepId,
+                    metadata: baseMetadata,
+                    email: {
+                        subject: `${authorName} flagged a correction on LumaWay`,
+                        html: (0, notificationDispatcher_1.buildNotificationEmail)({
+                            heading: 'Correction flagged',
+                            body: `<strong>${authorName}</strong> flagged a correction: <em>"${humanBody}"</em>`,
+                            ctaLabel: 'Review Correction',
+                            ctaUrl,
+                        }),
+                        text: `${authorName} flagged a correction: "${humanBody}"\n\nReview it here: ${ctaUrl}`,
                     },
                 });
                 notifiedUserIds.add(member.userId);
@@ -160,14 +192,25 @@ const processMentionsAndNotify = async (context) => {
             .where((0, drizzle_orm_1.eq)(schema_1.projectMembers.projectId, comment.projectId));
         for (const member of members) {
             if (!notifiedUserIds.has(member.userId)) {
-                await adapters_1.db.insert(schema_1.notifications).values({
+                await (0, notificationDispatcher_1.dispatchNotification)({
                     userId: member.userId,
                     type: 'announcement',
+                    projectId: comment.projectId,
                     title: `${authorName} posted an announcement`,
                     body: humanBody,
                     metadata: {
                         projectId: comment.projectId,
                         commentId: comment.id,
+                    },
+                    email: {
+                        subject: `${authorName} posted an announcement on LumaWay`,
+                        html: (0, notificationDispatcher_1.buildNotificationEmail)({
+                            heading: 'New announcement',
+                            body: `<strong>${authorName}</strong> posted an announcement: <em>"${humanBody}"</em>`,
+                            ctaLabel: 'View Announcement',
+                            ctaUrl,
+                        }),
+                        text: `${authorName} posted an announcement: "${humanBody}"\n\nView it here: ${ctaUrl}`,
                     },
                 });
                 notifiedUserIds.add(member.userId);

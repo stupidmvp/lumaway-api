@@ -4,6 +4,7 @@ exports.handleLifecycleNotifications = exports.handleCommentLifecycle = void 0;
 const adapters_1 = require("../../../adapters");
 const schema_1 = require("../../../db/schema");
 const drizzle_orm_1 = require("drizzle-orm");
+const notificationDispatcher_1 = require("../../../providers/notifications/notificationDispatcher");
 /**
  * Before hook on patch: handles lifecycle transitions for comments.
  *
@@ -61,17 +62,31 @@ const handleLifecycleNotifications = async (context) => {
     // ── Notify on correction resolved ─────────────────────────
     if (patchData?.isResolved === true && result.type === 'correction' && result.userId !== user.id) {
         const resolverName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-        await adapters_1.db.insert(schema_1.notifications).values({
+        const bodyPreview = result.content?.substring(0, 200) || '';
+        const metadata = {
+            projectId: result.projectId,
+            commentId: result.id,
+            resolvedBy: user.id,
+            targetType: result.targetType,
+            targetId: result.targetId,
+        };
+        const ctaUrl = (0, notificationDispatcher_1.buildCommentUrl)(metadata);
+        await (0, notificationDispatcher_1.dispatchNotification)({
             userId: result.userId,
             type: 'comment_resolved',
+            projectId: result.projectId,
             title: `${resolverName} resolved your correction`,
-            body: result.content?.substring(0, 200),
-            metadata: {
-                projectId: result.projectId,
-                commentId: result.id,
-                resolvedBy: user.id,
-                targetType: result.targetType,
-                targetId: result.targetId,
+            body: bodyPreview,
+            metadata,
+            email: {
+                subject: `${resolverName} resolved your correction on LumaWay`,
+                html: (0, notificationDispatcher_1.buildNotificationEmail)({
+                    heading: 'Correction resolved',
+                    body: `<strong>${resolverName}</strong> marked your correction as resolved: <em>"${bodyPreview}"</em>`,
+                    ctaLabel: 'View Correction',
+                    ctaUrl,
+                }),
+                text: `${resolverName} resolved your correction: "${bodyPreview}"\n\nView it here: ${ctaUrl}`,
             },
         });
     }

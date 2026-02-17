@@ -49,6 +49,38 @@ const populateProjectRelations = async (context) => {
             .from(schema_1.walkthroughs)
             .where((0, drizzle_orm_1.eq)(schema_1.walkthroughs.projectId, item.id));
         item.walkthroughsCount = Number(walkthroughsCount?.count || 0);
+        // Populate members preview (first 5) and total count
+        const [membersCountResult] = await index_js_1.db
+            .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+            .from(schema_1.projectMembers)
+            .where((0, drizzle_orm_1.eq)(schema_1.projectMembers.projectId, item.id));
+        item.membersCount = Number(membersCountResult?.count || 0);
+        const membersPreview = await index_js_1.db
+            .select({
+            id: schema_1.users.id,
+            firstName: schema_1.users.firstName,
+            lastName: schema_1.users.lastName,
+            email: schema_1.users.email,
+            avatar: schema_1.users.avatar,
+        })
+            .from(schema_1.projectMembers)
+            .innerJoin(schema_1.users, (0, drizzle_orm_1.eq)(schema_1.projectMembers.userId, schema_1.users.id))
+            .where((0, drizzle_orm_1.eq)(schema_1.projectMembers.projectId, item.id))
+            .limit(5);
+        item.members = membersPreview;
+        // Populate isFavorite for the current user
+        const currentUser = context.params?.user;
+        if (currentUser) {
+            const [favorite] = await index_js_1.db
+                .select({ id: schema_1.projectFavorites.id })
+                .from(schema_1.projectFavorites)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.projectFavorites.projectId, item.id), (0, drizzle_orm_1.eq)(schema_1.projectFavorites.userId, currentUser.id)))
+                .limit(1);
+            item.isFavorite = !!favorite;
+        }
+        else {
+            item.isFavorite = false;
+        }
     }
     return context;
 };

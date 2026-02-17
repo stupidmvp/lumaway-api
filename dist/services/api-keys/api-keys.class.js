@@ -8,12 +8,6 @@ class ApiKeysService extends core_1.DrizzleService {
         super(storage, model, createSchema, patchSchema);
     }
     /**
-     * Override primary key column — api_keys uses `key` (text) instead of the default `id`.
-     */
-    getPrimaryKey() {
-        return this.getColumn('key');
-    }
-    /**
      * Override get — base class hardcodes getColumn('id'), but our PK is `key`.
      */
     async get(id, params) {

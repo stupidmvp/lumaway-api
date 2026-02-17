@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notificationsRelations = exports.projectInvitationsRelations = exports.commentMentionsRelations = exports.commentAttachmentsRelations = exports.commentsRelations = exports.projectMembersRelations = exports.walkthroughVersionsRelations = exports.walkthroughsRelations = exports.rolePermissionsRelations = exports.permissionsRelations = exports.modulesRelations = exports.userRolesRelations = exports.rolesRelations = exports.projectsRelations = exports.organizationMembersRelations = exports.usersRelations = exports.organizationsRelations = exports.notifications = exports.projectInvitations = exports.commentMentions = exports.commentAttachments = exports.comments = exports.projectMembers = exports.walkthroughVersions = exports.walkthroughs = exports.apiKeys = exports.projects = exports.organizationMembers = exports.rolePermissions = exports.permissions = exports.modules = exports.userRoles = exports.roles = exports.users = exports.organizations = void 0;
+exports.notificationsRelations = exports.projectInvitationsRelations = exports.commentReactionsRelations = exports.commentMentionsRelations = exports.commentAttachmentsRelations = exports.commentsRelations = exports.projectMembersRelations = exports.projectFavoritesRelations = exports.walkthroughVersionsRelations = exports.walkthroughActorsRelations = exports.actorsRelations = exports.walkthroughsRelations = exports.rolePermissionsRelations = exports.permissionsRelations = exports.modulesRelations = exports.userRolesRelations = exports.rolesRelations = exports.projectsRelations = exports.organizationMembersRelations = exports.usersRelations = exports.organizationsRelations = exports.notifications = exports.projectInvitations = exports.projectFavorites = exports.commentReactions = exports.commentMentions = exports.commentAttachments = exports.comments = exports.projectMembers = exports.walkthroughVersions = exports.walkthroughActors = exports.actors = exports.walkthroughs = exports.apiKeys = exports.projects = exports.organizationMembers = exports.rolePermissions = exports.permissions = exports.modules = exports.userRoles = exports.roles = exports.users = exports.organizations = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const drizzle_orm_1 = require("drizzle-orm");
 // =====================================================
@@ -91,6 +91,7 @@ exports.projects = (0, pg_core_1.pgTable)('projects', {
     id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
     organizationId: (0, pg_core_1.uuid)('organization_id').references(() => exports.organizations.id).notNull(), // Projects belong to an org
     name: (0, pg_core_1.text)('name').notNull(),
+    logo: (0, pg_core_1.text)('logo'), // S3 relative path for project logo
     ownerId: (0, pg_core_1.uuid)('owner_id').references(() => exports.users.id), // Optional: creator of the project
     status: (0, pg_core_1.text)('status', { enum: ['active', 'archived'] }).notNull().default('active'),
     settings: (0, pg_core_1.jsonb)('settings').default({}).notNull(), // Project-level settings (permissions, mode, assistant, etc.)
@@ -110,12 +111,34 @@ exports.walkthroughs = (0, pg_core_1.pgTable)('walkthroughs', {
     previousWalkthroughId: (0, pg_core_1.uuid)('previous_walkthrough_id').references(() => exports.walkthroughs.id, { onDelete: 'set null' }),
     nextWalkthroughId: (0, pg_core_1.uuid)('next_walkthrough_id').references(() => exports.walkthroughs.id, { onDelete: 'set null' }),
     title: (0, pg_core_1.text)('title').notNull(),
+    description: (0, pg_core_1.text)('description'), // Plain text summary — used for AI context, search, and embeddings
+    content: (0, pg_core_1.jsonb)('content'), // Lexical editor state JSON — rich content source of truth
     steps: (0, pg_core_1.jsonb)('steps').default([]).notNull(),
+    tags: (0, pg_core_1.jsonb)('tags').default([]).notNull(),
     order: (0, pg_core_1.integer)('order').default(0).notNull(),
     isPublished: (0, pg_core_1.boolean)('is_published').default(false),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow(),
 });
+exports.actors = (0, pg_core_1.pgTable)('actors', {
+    id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
+    projectId: (0, pg_core_1.uuid)('project_id').references(() => exports.projects.id, { onDelete: 'cascade' }).notNull(),
+    name: (0, pg_core_1.text)('name').notNull(),
+    slug: (0, pg_core_1.text)('slug').notNull(), // Machine-friendly key used by the SDK (e.g., "admin", "sales-rep")
+    description: (0, pg_core_1.text)('description'),
+    color: (0, pg_core_1.text)('color'), // Optional color for UI badges
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
+}, (table) => ({
+    uniqueSlug: (0, pg_core_1.uniqueIndex)('actors_project_slug_idx').on(table.projectId, table.slug),
+}));
+exports.walkthroughActors = (0, pg_core_1.pgTable)('walkthrough_actors', {
+    walkthroughId: (0, pg_core_1.uuid)('walkthrough_id').references(() => exports.walkthroughs.id, { onDelete: 'cascade' }).notNull(),
+    actorId: (0, pg_core_1.uuid)('actor_id').references(() => exports.actors.id, { onDelete: 'cascade' }).notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+}, (table) => ({
+    pk: (0, pg_core_1.primaryKey)({ columns: [table.walkthroughId, table.actorId] }),
+}));
 exports.walkthroughVersions = (0, pg_core_1.pgTable)('walkthrough_versions', {
     id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
     walkthroughId: (0, pg_core_1.uuid)('walkthrough_id').references(() => exports.walkthroughs.id, { onDelete: 'cascade' }).notNull(),
@@ -188,6 +211,26 @@ exports.commentMentions = (0, pg_core_1.pgTable)('comment_mentions', {
 }, (table) => ({
     uniqueMention: (0, pg_core_1.uniqueIndex)('comment_mentions_comment_user_idx').on(table.commentId, table.mentionedUserId),
 }));
+exports.commentReactions = (0, pg_core_1.pgTable)('comment_reactions', {
+    id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
+    commentId: (0, pg_core_1.uuid)('comment_id').references(() => exports.comments.id, { onDelete: 'cascade' }).notNull(),
+    userId: (0, pg_core_1.uuid)('user_id').references(() => exports.users.id, { onDelete: 'cascade' }).notNull(),
+    emoji: (0, pg_core_1.text)('emoji').notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+}, (table) => ({
+    uniqueReaction: (0, pg_core_1.uniqueIndex)('comment_reactions_comment_user_emoji_idx').on(table.commentId, table.userId, table.emoji),
+}));
+// =====================================================
+// PROJECT FAVORITES (User <-> Project)
+// =====================================================
+exports.projectFavorites = (0, pg_core_1.pgTable)('project_favorites', {
+    id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
+    projectId: (0, pg_core_1.uuid)('project_id').references(() => exports.projects.id, { onDelete: 'cascade' }).notNull(),
+    userId: (0, pg_core_1.uuid)('user_id').references(() => exports.users.id, { onDelete: 'cascade' }).notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+}, (table) => ({
+    uniqueFavorite: (0, pg_core_1.uniqueIndex)('project_favorites_project_user_idx').on(table.projectId, table.userId),
+}));
 // =====================================================
 // INVITATIONS & NOTIFICATIONS
 // =====================================================
@@ -213,6 +256,7 @@ exports.notifications = (0, pg_core_1.pgTable)('notifications', {
             'invitation_accepted',
             'mention',
             'comment_reply',
+            'reaction',
             'correction',
             'comment_resolved',
             'announcement',
@@ -240,6 +284,7 @@ exports.usersRelations = (0, drizzle_orm_1.relations)(exports.users, ({ one, man
     userRoles: many(exports.userRoles),
     projects: many(exports.projects), // Projects created by user
     organizationMemberships: many(exports.organizationMembers),
+    projectFavorites: many(exports.projectFavorites),
 }));
 exports.organizationMembersRelations = (0, drizzle_orm_1.relations)(exports.organizationMembers, ({ one }) => ({
     organization: one(exports.organizations, {
@@ -265,6 +310,8 @@ exports.projectsRelations = (0, drizzle_orm_1.relations)(exports.projects, ({ on
     members: many(exports.projectMembers),
     invitations: many(exports.projectInvitations),
     comments: many(exports.comments),
+    actors: many(exports.actors),
+    favorites: many(exports.projectFavorites),
 }));
 exports.rolesRelations = (0, drizzle_orm_1.relations)(exports.roles, ({ many }) => ({
     userRoles: many(exports.userRoles),
@@ -328,7 +375,25 @@ exports.walkthroughsRelations = (0, drizzle_orm_1.relations)(exports.walkthrough
         references: [exports.walkthroughs.id],
         relationName: 'previousOf'
     }),
-    versions: many(exports.walkthroughVersions)
+    versions: many(exports.walkthroughVersions),
+    walkthroughActors: many(exports.walkthroughActors),
+}));
+exports.actorsRelations = (0, drizzle_orm_1.relations)(exports.actors, ({ one, many }) => ({
+    project: one(exports.projects, {
+        fields: [exports.actors.projectId],
+        references: [exports.projects.id]
+    }),
+    walkthroughActors: many(exports.walkthroughActors),
+}));
+exports.walkthroughActorsRelations = (0, drizzle_orm_1.relations)(exports.walkthroughActors, ({ one }) => ({
+    walkthrough: one(exports.walkthroughs, {
+        fields: [exports.walkthroughActors.walkthroughId],
+        references: [exports.walkthroughs.id]
+    }),
+    actor: one(exports.actors, {
+        fields: [exports.walkthroughActors.actorId],
+        references: [exports.actors.id]
+    }),
 }));
 exports.walkthroughVersionsRelations = (0, drizzle_orm_1.relations)(exports.walkthroughVersions, ({ one }) => ({
     walkthrough: one(exports.walkthroughs, {
@@ -342,6 +407,16 @@ exports.walkthroughVersionsRelations = (0, drizzle_orm_1.relations)(exports.walk
     restoredFromVersion: one(exports.walkthroughVersions, {
         fields: [exports.walkthroughVersions.restoredFrom],
         references: [exports.walkthroughVersions.id]
+    })
+}));
+exports.projectFavoritesRelations = (0, drizzle_orm_1.relations)(exports.projectFavorites, ({ one }) => ({
+    project: one(exports.projects, {
+        fields: [exports.projectFavorites.projectId],
+        references: [exports.projects.id]
+    }),
+    user: one(exports.users, {
+        fields: [exports.projectFavorites.userId],
+        references: [exports.users.id]
     })
 }));
 exports.projectMembersRelations = (0, drizzle_orm_1.relations)(exports.projectMembers, ({ one }) => ({
@@ -373,6 +448,7 @@ exports.commentsRelations = (0, drizzle_orm_1.relations)(exports.comments, ({ on
     }),
     attachments: many(exports.commentAttachments),
     mentions: many(exports.commentMentions),
+    reactions: many(exports.commentReactions),
 }));
 exports.commentAttachmentsRelations = (0, drizzle_orm_1.relations)(exports.commentAttachments, ({ one }) => ({
     comment: one(exports.comments, {
@@ -391,6 +467,16 @@ exports.commentMentionsRelations = (0, drizzle_orm_1.relations)(exports.commentM
     }),
     mentionedUser: one(exports.users, {
         fields: [exports.commentMentions.mentionedUserId],
+        references: [exports.users.id]
+    }),
+}));
+exports.commentReactionsRelations = (0, drizzle_orm_1.relations)(exports.commentReactions, ({ one }) => ({
+    comment: one(exports.comments, {
+        fields: [exports.commentReactions.commentId],
+        references: [exports.comments.id]
+    }),
+    user: one(exports.users, {
+        fields: [exports.commentReactions.userId],
         references: [exports.users.id]
     }),
 }));

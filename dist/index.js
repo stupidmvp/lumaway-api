@@ -80,6 +80,11 @@ const invitation_accept_service_1 = require("./services/invitation-accept/invita
 const invitation_reject_service_1 = require("./services/invitation-reject/invitation-reject.service");
 const notification_mark_read_service_1 = require("./services/notification-mark-read/notification-mark-read.service");
 const walkthrough_restore_service_1 = require("./services/walkthrough-restore/walkthrough-restore.service");
+const walkthrough_parent_candidates_service_1 = require("./services/walkthrough-parent-candidates/walkthrough-parent-candidates.service");
+const actors_service_1 = require("./services/actors/actors.service");
+const walkthrough_actors_service_1 = require("./services/walkthrough-actors/walkthrough-actors.service");
+const comment_reactions_service_1 = require("./services/comment-reactions/comment-reactions.service");
+const project_favorites_service_1 = require("./services/project-favorites/project-favorites.service");
 // Admin services
 const admin_users_service_1 = require("./services/admin-users/admin-users.service");
 const admin_user_roles_service_1 = require("./services/admin-user-roles/admin-user-roles.service");
@@ -125,7 +130,9 @@ app.registerService('api-keys', api_keys_service_1.apiKeysService);
 app.registerService('s3-url-signing', s3_url_signing_service_1.s3UrlSigningService);
 app.registerService('project-members', project_members_service_1.projectMembersService);
 app.registerService('comments', comments_service_1.commentsService);
+app.registerService('comment-reactions', comment_reactions_service_1.commentReactionsService);
 app.registerService('project-invitations', project_invitations_service_1.projectInvitationsService);
+app.registerService('project-favorites', project_favorites_service_1.projectFavoritesService);
 app.registerService('notifications', notifications_service_1.notificationsService);
 // =====================================================
 // Register custom BaseService services
@@ -152,9 +159,13 @@ app.registerService('invitation-details', invitation_details_service_1.invitatio
 app.registerService('invitation-accept', invitation_accept_service_1.invitationAcceptService);
 app.registerService('invitation-reject', invitation_reject_service_1.invitationRejectService);
 app.registerService('notification-mark-read', notification_mark_read_service_1.notificationMarkReadService);
+// Actors & walkthrough-actors
+app.registerService('actors', actors_service_1.actorsService);
+app.registerService('walkthrough-actors', walkthrough_actors_service_1.walkthroughActorsService);
 // Walkthrough restore needs app reference to call other services
 walkthrough_restore_service_1.walkthroughRestoreService.setApp(app);
 app.registerService('walkthrough-restore', walkthrough_restore_service_1.walkthroughRestoreService);
+app.registerService('walkthrough-parent-candidates', walkthrough_parent_candidates_service_1.walkthroughParentCandidatesService);
 // Admin (superadmin only)
 app.registerService('admin-users', admin_users_service_1.adminUsersService);
 app.registerService('admin-user-roles', admin_user_roles_service_1.adminUserRolesService);

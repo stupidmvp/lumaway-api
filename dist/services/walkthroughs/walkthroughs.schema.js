@@ -21,7 +21,10 @@ exports.stepSchema = zod_1.z.object({
 exports.walkthroughsCreateSchema = (0, drizzle_zod_1.createInsertSchema)(schema_1.walkthroughs, {
     projectId: zod_1.z.string().uuid(),
     title: zod_1.z.string().min(1),
+    description: zod_1.z.string().max(2000).optional().nullable(),
+    content: zod_1.z.any().optional().nullable(), // Lexical editor state JSON
     steps: zod_1.z.array(exports.stepSchema).optional(),
+    tags: zod_1.z.array(zod_1.z.string().min(1).max(50)).max(20).optional(),
     isPublished: zod_1.z.boolean().optional(),
 }).omit({
     createdAt: true,

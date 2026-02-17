@@ -11,10 +11,17 @@ exports.userPreferencesSchema = zod_1.z.object({
     defaultHomePage: zod_1.z.enum(['projects', 'walkthroughs']).optional(),
     displayNames: zod_1.z.enum(['fullName', 'firstName', 'email']).optional(),
     firstDayOfWeek: zod_1.z.enum(['monday', 'sunday']).optional(),
-    // Notifications
+    // Notifications — master toggle
     emailNotifications: zod_1.z.boolean().optional(),
     notifyOnInvitation: zod_1.z.boolean().optional(),
     notifyOnMemberJoin: zod_1.z.boolean().optional(),
+    // Notifications — per-type email controls (social-media style)
+    emailOnMention: zod_1.z.boolean().optional(),
+    emailOnReply: zod_1.z.boolean().optional(),
+    emailOnReaction: zod_1.z.boolean().optional(),
+    emailOnCorrection: zod_1.z.boolean().optional(),
+    emailOnResolved: zod_1.z.boolean().optional(),
+    emailOnAnnouncement: zod_1.z.boolean().optional(),
     // Editor
     editorSidebarOpen: zod_1.z.boolean().optional(),
     defaultStepPlacement: zod_1.z.enum(['auto', 'top', 'bottom', 'left', 'right']).optional(),
@@ -30,6 +37,12 @@ exports.DEFAULT_PREFERENCES = {
     emailNotifications: true,
     notifyOnInvitation: true,
     notifyOnMemberJoin: true,
+    emailOnMention: true,
+    emailOnReply: true,
+    emailOnReaction: false, // Reactions are noisy — email OFF by default (social-media style)
+    emailOnCorrection: true,
+    emailOnResolved: true,
+    emailOnAnnouncement: true,
     editorSidebarOpen: true,
     defaultStepPlacement: 'bottom',
     onboardingCompleted: false,

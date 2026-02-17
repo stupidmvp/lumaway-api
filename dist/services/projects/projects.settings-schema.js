@@ -27,10 +27,18 @@ exports.projectSettingsSchema = zod_1.z.object({
     editorCanInvite: zod_1.z.boolean().optional(),
     viewerCanComment: zod_1.z.boolean().optional(),
     viewerCanExport: zod_1.z.boolean().optional(),
-    // ── Notifications ────────────────────────────────────────────────────
+    // ── Notifications — project lifecycle ───────────────────────────────
     notifyOnPublish: zod_1.z.boolean().optional(),
     notifyOnNewMember: zod_1.z.boolean().optional(),
     notifyOnWalkthroughUpdate: zod_1.z.boolean().optional(),
+    // ── Notifications — comment activity ─────────────────────────────
+    // Project-level gates: if OFF, no member receives this notification type
+    notifyOnMention: zod_1.z.boolean().optional(),
+    notifyOnReply: zod_1.z.boolean().optional(),
+    notifyOnReaction: zod_1.z.boolean().optional(),
+    notifyOnCorrection: zod_1.z.boolean().optional(),
+    notifyOnResolved: zod_1.z.boolean().optional(),
+    notifyOnAnnouncement: zod_1.z.boolean().optional(),
 }).strict();
 exports.DEFAULT_PROJECT_SETTINGS = {
     description: '',
@@ -52,8 +60,15 @@ exports.DEFAULT_PROJECT_SETTINGS = {
     editorCanInvite: true,
     viewerCanComment: true,
     viewerCanExport: true,
-    // Notifications
+    // Notifications — project lifecycle
     notifyOnPublish: true,
     notifyOnNewMember: true,
     notifyOnWalkthroughUpdate: false,
+    // Notifications — comment activity (all ON by default)
+    notifyOnMention: true,
+    notifyOnReply: true,
+    notifyOnReaction: true,
+    notifyOnCorrection: true,
+    notifyOnResolved: true,
+    notifyOnAnnouncement: true,
 };

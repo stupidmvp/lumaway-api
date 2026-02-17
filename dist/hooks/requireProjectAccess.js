@@ -75,6 +75,19 @@ function requireProjectAccess(options) {
                 }
                 break;
             }
+            case 'fromActorSelf': {
+                // The resource IS the actor (for patch/remove on actors service)
+                const actorId = resourceId;
+                if (actorId) {
+                    const [actor] = await adapters_1.db
+                        .select({ projectId: schema_1.actors.projectId })
+                        .from(schema_1.actors)
+                        .where((0, drizzle_orm_1.eq)(schema_1.actors.id, actorId))
+                        .limit(1);
+                    projectId = actor?.projectId;
+                }
+                break;
+            }
         }
         if (!projectId) {
             throw new Error('Could not determine project for access check');

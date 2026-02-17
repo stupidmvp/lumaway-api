@@ -37,11 +37,16 @@ exports.patchCurrentUser = void 0;
 const adapters_1 = require("../../../adapters");
 const schema_1 = require("../../../db/schema");
 const drizzle_orm_1 = require("drizzle-orm");
+const roles_1 = require("../../../utils/roles");
+const organizationMemberships_1 = require("../../../utils/organizationMemberships");
 /**
  * Before hook for `patch` on `me`.
  *
  * Updates the current user's profile.
  * The `id` parameter is ignored; the authenticated user is always the target.
+ *
+ * Returns the full user shape (with organizationMemberships, globalRoles,
+ * projectMemberships) so the frontend cache stays consistent.
  *
  * Sets `context.result` to short-circuit the default service patch.
  */
@@ -81,9 +86,32 @@ const patchCurrentUser = async (context) => {
         .set({ ...updateData, updatedAt: new Date() })
         .where((0, drizzle_orm_1.eq)(schema_1.users.id, user.id))
         .returning();
-    // Return without password
+    // Fetch relationships so the response matches the GET /me shape
+    const [globalRoles, orgMemberships, projectMembershipRows] = await Promise.all([
+        (0, roles_1.getUserRoles)(adapters_1.drizzleAdapter, updated.id),
+        (0, organizationMemberships_1.getUserOrgMemberships)(adapters_1.drizzleAdapter, updated.id),
+        adapters_1.db.select({
+            projectId: schema_1.projectMembers.projectId,
+            role: schema_1.projectMembers.role,
+        })
+            .from(schema_1.projectMembers)
+            .where((0, drizzle_orm_1.eq)(schema_1.projectMembers.userId, updated.id)),
+    ]);
+    // Return without password, with full relationships
     const { password: _, ...safeUser } = updated;
-    context.result = safeUser;
+    context.result = {
+        ...safeUser,
+        globalRoles,
+        organizationMemberships: orgMemberships.map((m) => ({
+            organizationId: m.organizationId,
+            role: m.role,
+            organization: m.organization,
+        })),
+        projectMemberships: projectMembershipRows.map((pm) => ({
+            projectId: pm.projectId,
+            role: pm.role,
+        })),
+    };
     return context;
 };
 exports.patchCurrentUser = patchCurrentUser;

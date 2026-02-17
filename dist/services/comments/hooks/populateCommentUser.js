@@ -99,6 +99,50 @@ const populateCommentUser = async (context) => {
                 item.mentions = [];
             }
         }
+        // Populate reactions with user info
+        if (item.id) {
+            const reactions = await adapters_1.db
+                .select({
+                id: schema_1.commentReactions.id,
+                userId: schema_1.commentReactions.userId,
+                emoji: schema_1.commentReactions.emoji,
+                createdAt: schema_1.commentReactions.createdAt,
+            })
+                .from(schema_1.commentReactions)
+                .where((0, drizzle_orm_1.eq)(schema_1.commentReactions.commentId, item.id));
+            if (reactions.length > 0) {
+                // Batch-fetch unique user info for reaction authors
+                const reactionUserIds = [...new Set(reactions.map(r => r.userId))];
+                const reactionUserMap = new Map();
+                for (const uid of reactionUserIds) {
+                    // Reuse already-fetched user if it's the comment author
+                    if (item.user && uid === item.userId) {
+                        reactionUserMap.set(uid, item.user);
+                    }
+                    else if (!reactionUserMap.has(uid)) {
+                        const [u] = await adapters_1.db
+                            .select({
+                            id: schema_1.users.id,
+                            firstName: schema_1.users.firstName,
+                            lastName: schema_1.users.lastName,
+                            avatar: schema_1.users.avatar,
+                        })
+                            .from(schema_1.users)
+                            .where((0, drizzle_orm_1.eq)(schema_1.users.id, uid))
+                            .limit(1);
+                        if (u)
+                            reactionUserMap.set(uid, u);
+                    }
+                }
+                item.reactions = reactions.map(r => ({
+                    ...r,
+                    user: reactionUserMap.get(r.userId) || null,
+                }));
+            }
+            else {
+                item.reactions = [];
+            }
+        }
         // Populate step info from walkthrough steps JSON
         if (item.stepId && item.targetId) {
             const wtData = walkthroughStepsMap.get(item.targetId);

@@ -41,6 +41,21 @@ const populateWalkthroughRelations = async (context) => {
                 item.owner = owner;
             }
         }
+        // Populate actors (host roles assigned to this walkthrough)
+        if (item.id) {
+            const actorResults = await index_js_1.db
+                .select({
+                id: schema_1.actors.id,
+                name: schema_1.actors.name,
+                slug: schema_1.actors.slug,
+                description: schema_1.actors.description,
+                color: schema_1.actors.color,
+            })
+                .from(schema_1.walkthroughActors)
+                .innerJoin(schema_1.actors, (0, drizzle_orm_1.eq)(schema_1.walkthroughActors.actorId, schema_1.actors.id))
+                .where((0, drizzle_orm_1.eq)(schema_1.walkthroughActors.walkthroughId, item.id));
+            item.actors = actorResults;
+        }
     }
     return context;
 };

@@ -76,7 +76,6 @@ const app = new FlexApp({
                 : [];
 
             const whitelist = [
-                'https://lumaway-cms.vercel.app',
                 'http://localhost:3000',
                 'http://localhost:3001',
                 ...allowedOrigins,

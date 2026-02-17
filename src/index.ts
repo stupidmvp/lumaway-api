@@ -68,6 +68,17 @@ dotenv.config();
 const app = new FlexApp({
     db: drizzleAdapter,
     port: Number(process.env.PORT) || 3001,
+    cors: {
+        origin: [
+            'https://lumaway-cms.vercel.app',
+            'http://localhost:3000',
+            'http://localhost:3001',
+            ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+        ],
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    },
 });
 
 // Configure Auth

@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@flex-donec/core':
-    hash: c3d6cf4ea01d563249cbe3f19cfd5594bd757d489dce4be6a4e00ea483d4bf66
+    hash: phbw7737zs3mrqeenelas57xui
     path: patches/@flex-donec__core.patch
 
 importers:
@@ -24,7 +24,7 @@ importers:
         version: 6.8.0
       '@flex-donec/core':
         specifier: ^0.1.2
-        version: 0.1.2(patch_hash=c3d6cf4ea01d563249cbe3f19cfd5594bd757d489dce4be6a4e00ea483d4bf66)(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(drizzle-zod@0.5.1(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(zod@3.25.76))(express@4.22.1)(zod@3.25.76)
+        version: 0.1.2(patch_hash=phbw7737zs3mrqeenelas57xui)(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(drizzle-zod@0.5.1(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(zod@3.25.76))(express@4.22.1)(zod@3.25.76)
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6
@@ -2829,7 +2829,7 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@flex-donec/core@0.1.2(patch_hash=c3d6cf4ea01d563249cbe3f19cfd5594bd757d489dce4be6a4e00ea483d4bf66)(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(drizzle-zod@0.5.1(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(zod@3.25.76))(express@4.22.1)(zod@3.25.76)':
+  '@flex-donec/core@0.1.2(patch_hash=phbw7737zs3mrqeenelas57xui)(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(drizzle-zod@0.5.1(drizzle-orm@0.44.7(@types/pg@8.16.0)(postgres@3.4.8))(zod@3.25.76))(express@4.22.1)(zod@3.25.76)':
     dependencies:
       '@casl/ability': 6.8.0
       bcryptjs: 2.4.3

@@ -21,68 +21,74 @@ const drizzle_orm_1 = require("drizzle-orm");
  * Sets `context.result` to short-circuit the default service find.
  */
 const findPublishedWalkthroughs = async (context) => {
-    const apiKey = context.params?.headers?.['x-api-key'];
-    if (!apiKey) {
-        throw new Error('Missing API Key');
-    }
-    // Validate API Key and get projectId
-    const keyRecords = await adapters_1.db.select().from(schema_1.apiKeys).where((0, drizzle_orm_1.eq)(schema_1.apiKeys.key, apiKey)).limit(1);
-    const keyRecord = keyRecords[0];
-    if (!keyRecord) {
-        throw new Error('Invalid API Key');
-    }
-    const projectId = keyRecord.projectId;
-    const actorSlug = context.params?.headers?.['x-actor-slug'];
-    // Fetch only published walkthroughs for this project
-    const allPublished = await adapters_1.db.select()
-        .from(schema_1.walkthroughs)
-        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.walkthroughs.projectId, projectId), (0, drizzle_orm_1.eq)(schema_1.walkthroughs.isPublished, true)));
-    // If no actor slug provided, return all published (backward-compatible)
-    if (!actorSlug) {
-        context.result = allPublished;
-        return context;
-    }
-    // Find the actor by slug in this project
-    const [actor] = await adapters_1.db.select({ id: schema_1.actors.id })
-        .from(schema_1.actors)
-        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.actors.projectId, projectId), (0, drizzle_orm_1.eq)(schema_1.actors.slug, actorSlug)))
-        .limit(1);
-    if (!actor) {
-        // Unknown actor slug — return only walkthroughs with no actors assigned (universal)
-        const walkthroughIds = allPublished.map(w => w.id);
-        if (walkthroughIds.length === 0) {
+    try {
+        const apiKey = context.params?.headers?.['x-api-key'];
+        if (!apiKey) {
+            throw new Error('Missing API Key');
+        }
+        // Validate API Key and get projectId
+        const keyRecords = await adapters_1.db.select().from(schema_1.apiKeys).where((0, drizzle_orm_1.eq)(schema_1.apiKeys.key, apiKey)).limit(1);
+        const keyRecord = keyRecords[0];
+        if (!keyRecord) {
+            throw new Error('Invalid API Key');
+        }
+        const projectId = keyRecord.projectId;
+        const actorSlug = context.params?.headers?.['x-actor-slug'];
+        // Fetch only published walkthroughs for this project
+        const allPublished = await adapters_1.db.select()
+            .from(schema_1.walkthroughs)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.walkthroughs.projectId, projectId), (0, drizzle_orm_1.eq)(schema_1.walkthroughs.isPublished, true)));
+        // If no actor slug provided, return all published (backward-compatible)
+        if (!actorSlug) {
+            context.result = allPublished;
+            return context;
+        }
+        // Find the actor by slug in this project
+        const [actor] = await adapters_1.db.select({ id: schema_1.actors.id })
+            .from(schema_1.actors)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.actors.projectId, projectId), (0, drizzle_orm_1.eq)(schema_1.actors.slug, actorSlug)))
+            .limit(1);
+        if (!actor) {
+            // Unknown actor slug — return only walkthroughs with no actors assigned (universal)
+            const walkthroughIds = allPublished.map(w => w.id);
+            if (walkthroughIds.length === 0) {
+                context.result = [];
+                return context;
+            }
+            const assignedWalkthroughIds = await adapters_1.db
+                .select({ walkthroughId: schema_1.walkthroughActors.walkthroughId })
+                .from(schema_1.walkthroughActors)
+                .where((0, drizzle_orm_1.inArray)(schema_1.walkthroughActors.walkthroughId, walkthroughIds));
+            const assignedSet = new Set(assignedWalkthroughIds.map(r => r.walkthroughId));
+            context.result = allPublished.filter(w => !assignedSet.has(w.id));
+            return context;
+        }
+        // Get walkthrough IDs assigned to this actor
+        const actorAssignments = await adapters_1.db
+            .select({ walkthroughId: schema_1.walkthroughActors.walkthroughId })
+            .from(schema_1.walkthroughActors)
+            .where((0, drizzle_orm_1.eq)(schema_1.walkthroughActors.actorId, actor.id));
+        const actorWalkthroughIds = new Set(actorAssignments.map(a => a.walkthroughId));
+        // Get ALL assignments to determine which walkthroughs have no actors (universal)
+        const publishedIds = allPublished.map(w => w.id);
+        if (publishedIds.length === 0) {
             context.result = [];
             return context;
         }
-        const assignedWalkthroughIds = await adapters_1.db
+        const allAssignments = await adapters_1.db
             .select({ walkthroughId: schema_1.walkthroughActors.walkthroughId })
             .from(schema_1.walkthroughActors)
-            .where((0, drizzle_orm_1.inArray)(schema_1.walkthroughActors.walkthroughId, walkthroughIds));
-        const assignedSet = new Set(assignedWalkthroughIds.map(r => r.walkthroughId));
-        context.result = allPublished.filter(w => !assignedSet.has(w.id));
+            .where((0, drizzle_orm_1.inArray)(schema_1.walkthroughActors.walkthroughId, publishedIds));
+        const assignedSet = new Set(allAssignments.map(r => r.walkthroughId));
+        // Return walkthroughs that:
+        // 1. Are explicitly assigned to this actor, OR
+        // 2. Have no actors assigned at all (universal walkthroughs)
+        context.result = allPublished.filter(w => actorWalkthroughIds.has(w.id) || !assignedSet.has(w.id));
         return context;
     }
-    // Get walkthrough IDs assigned to this actor
-    const actorAssignments = await adapters_1.db
-        .select({ walkthroughId: schema_1.walkthroughActors.walkthroughId })
-        .from(schema_1.walkthroughActors)
-        .where((0, drizzle_orm_1.eq)(schema_1.walkthroughActors.actorId, actor.id));
-    const actorWalkthroughIds = new Set(actorAssignments.map(a => a.walkthroughId));
-    // Get ALL assignments to determine which walkthroughs have no actors (universal)
-    const publishedIds = allPublished.map(w => w.id);
-    if (publishedIds.length === 0) {
-        context.result = [];
-        return context;
+    catch (error) {
+        console.error("🔥 Error crítico en findPublishedWalkthroughs:", error);
+        throw error;
     }
-    const allAssignments = await adapters_1.db
-        .select({ walkthroughId: schema_1.walkthroughActors.walkthroughId })
-        .from(schema_1.walkthroughActors)
-        .where((0, drizzle_orm_1.inArray)(schema_1.walkthroughActors.walkthroughId, publishedIds));
-    const assignedSet = new Set(allAssignments.map(r => r.walkthroughId));
-    // Return walkthroughs that:
-    // 1. Are explicitly assigned to this actor, OR
-    // 2. Have no actors assigned at all (universal walkthroughs)
-    context.result = allPublished.filter(w => actorWalkthroughIds.has(w.id) || !assignedSet.has(w.id));
-    return context;
 };
 exports.findPublishedWalkthroughs = findPublishedWalkthroughs;

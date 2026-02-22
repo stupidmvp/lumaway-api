@@ -1,5 +1,5 @@
 import { db } from '../../../adapters';
-import { users, organizations, organizationMembers, projects, projectMembers } from '../../../db/schema';
+import { users, organizations, organizationMembers, projects, projectMembers, subscriptionPlans } from '../../../db/schema';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -33,10 +33,18 @@ export const completeOnboarding = async (context: any) => {
         throw new Error('This organization slug is already taken');
     }
 
-    // Create the organization
+    // Resolve free plan for new organizations
+    const [freePlan] = await db
+        .select({ id: subscriptionPlans.id })
+        .from(subscriptionPlans)
+        .where(eq(subscriptionPlans.tier, 'free'))
+        .limit(1);
+
+    // Create the organization (defaults to free plan)
     const [org] = await db.insert(organizations).values({
         name: organizationName,
         slug: organizationSlug,
+        ...(freePlan ? { planId: freePlan.id } : {}),
     }).returning();
 
     // Add user as owner of the organization

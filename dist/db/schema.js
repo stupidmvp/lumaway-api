@@ -1,8 +1,34 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notificationsRelations = exports.projectInvitationsRelations = exports.commentReactionsRelations = exports.commentMentionsRelations = exports.commentAttachmentsRelations = exports.commentsRelations = exports.projectMembersRelations = exports.projectFavoritesRelations = exports.walkthroughVersionsRelations = exports.walkthroughActorsRelations = exports.actorsRelations = exports.walkthroughsRelations = exports.rolePermissionsRelations = exports.permissionsRelations = exports.modulesRelations = exports.userRolesRelations = exports.rolesRelations = exports.projectsRelations = exports.organizationMembersRelations = exports.usersRelations = exports.organizationsRelations = exports.notifications = exports.projectInvitations = exports.projectFavorites = exports.commentReactions = exports.commentMentions = exports.commentAttachments = exports.comments = exports.projectMembers = exports.walkthroughVersions = exports.walkthroughActors = exports.actors = exports.walkthroughs = exports.apiKeys = exports.projects = exports.organizationMembers = exports.rolePermissions = exports.permissions = exports.modules = exports.userRoles = exports.roles = exports.users = exports.organizations = void 0;
+exports.notificationsRelations = exports.projectInvitationsRelations = exports.commentReactionsRelations = exports.commentMentionsRelations = exports.commentAttachmentsRelations = exports.commentsRelations = exports.projectMembersRelations = exports.projectFavoritesRelations = exports.walkthroughApprovalsRelations = exports.walkthroughVersionsRelations = exports.walkthroughActorsRelations = exports.actorsRelations = exports.walkthroughsRelations = exports.rolePermissionsRelations = exports.permissionsRelations = exports.modulesRelations = exports.userRolesRelations = exports.rolesRelations = exports.projectsRelations = exports.organizationMembersRelations = exports.usersRelations = exports.tenantLlmKeysRelations = exports.organizationsRelations = exports.subscriptionPlansRelations = exports.tenantLlmKeys = exports.notifications = exports.projectInvitations = exports.projectFavorites = exports.commentReactions = exports.commentMentions = exports.commentAttachments = exports.comments = exports.projectMembers = exports.walkthroughApprovals = exports.walkthroughVersions = exports.walkthroughActors = exports.actors = exports.walkthroughs = exports.apiKeys = exports.projects = exports.organizationMembers = exports.rolePermissions = exports.permissions = exports.modules = exports.userRoles = exports.roles = exports.users = exports.organizations = exports.systemSecrets = exports.subscriptionPlans = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const drizzle_orm_1 = require("drizzle-orm");
+// =====================================================
+// SUBSCRIPTION PLANS
+// =====================================================
+exports.subscriptionPlans = (0, pg_core_1.pgTable)('subscription_plans', {
+    id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
+    name: (0, pg_core_1.text)('name').notNull(), // e.g., 'Free', 'Pro', 'Enterprise'
+    tier: (0, pg_core_1.text)('tier', { enum: ['free', 'pro', 'enterprise'] }).notNull(),
+    llmModels: (0, pg_core_1.jsonb)('llm_models').default([]).notNull(), // Allowed model IDs e.g., ['gemini-1.5-flash', 'llama-3.1-70b-versatile']
+    maxRpm: (0, pg_core_1.integer)('max_rpm').default(15).notNull(), // Rate limit: requests per minute
+    maxTokensMonth: (0, pg_core_1.integer)('max_tokens_month'), // Monthly token cap (null = unlimited)
+    isActive: (0, pg_core_1.boolean)('is_active').default(true).notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
+});
+// =====================================================
+// SYSTEM CONFIG - SECRETS MANAGEMENT
+// =====================================================
+exports.systemSecrets = (0, pg_core_1.pgTable)('system_secrets', {
+    id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
+    keyName: (0, pg_core_1.text)('key_name').notNull().unique(), // e.g., 'GEMINI_KEY', 'GROQ_KEY'
+    keyValue: (0, pg_core_1.text)('key_value').notNull(), // API key value (encrypt at rest in phase 2)
+    provider: (0, pg_core_1.text)('provider', { enum: ['google', 'groq', 'openai', 'anthropic'] }).notNull(),
+    isActive: (0, pg_core_1.boolean)('is_active').default(true).notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
+});
 // =====================================================
 // CORE ENTITIES - REGISTERED USERS & RBAC
 // =====================================================
@@ -11,6 +37,8 @@ exports.organizations = (0, pg_core_1.pgTable)('organizations', {
     name: (0, pg_core_1.text)('name').notNull(),
     slug: (0, pg_core_1.text)('slug').unique().notNull(), // URL-friendly identifier for the org
     logo: (0, pg_core_1.text)('logo'), // S3 relative path for org logo
+    planId: (0, pg_core_1.uuid)('plan_id').references(() => exports.subscriptionPlans.id), // Subscription plan (null = free)
+    settings: (0, pg_core_1.jsonb)('settings').default({}).notNull(), // Org-level settings (LLM policy, etc.)
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
     deletedAt: (0, pg_core_1.timestamp)('deleted_at')
@@ -116,6 +144,9 @@ exports.walkthroughs = (0, pg_core_1.pgTable)('walkthroughs', {
     steps: (0, pg_core_1.jsonb)('steps').default([]).notNull(),
     tags: (0, pg_core_1.jsonb)('tags').default([]).notNull(),
     order: (0, pg_core_1.integer)('order').default(0).notNull(),
+    trigger: (0, pg_core_1.jsonb)('trigger'), // { type: 'route' | 'interaction' | 'intent', value: string }
+    executionMode: (0, pg_core_1.text)('execution_mode', { enum: ['automatic', 'suggestion', 'manual'] }).default('automatic'),
+    repeatable: (0, pg_core_1.boolean)('repeatable').default(false),
     isPublished: (0, pg_core_1.boolean)('is_published').default(false),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow(),
@@ -145,11 +176,24 @@ exports.walkthroughVersions = (0, pg_core_1.pgTable)('walkthrough_versions', {
     versionNumber: (0, pg_core_1.integer)('version_number').notNull(),
     title: (0, pg_core_1.text)('title').notNull(),
     steps: (0, pg_core_1.jsonb)('steps').default([]).notNull(),
+    status: (0, pg_core_1.text)('status', { enum: ['draft', 'pending_approval', 'approved', 'rejected', 'published'] }).notNull().default('draft'),
     isPublished: (0, pg_core_1.boolean)('is_published').default(false),
+    requestedApprovalAt: (0, pg_core_1.timestamp)('requested_approval_at'),
+    approvedAt: (0, pg_core_1.timestamp)('approved_at'),
+    approvedBy: (0, pg_core_1.uuid)('approved_by').references(() => exports.users.id),
+    rejectionReason: (0, pg_core_1.text)('rejection_reason'),
     createdBy: (0, pg_core_1.uuid)('created_by').references(() => exports.users.id),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     restoredFrom: (0, pg_core_1.uuid)('restored_from').references(() => exports.walkthroughVersions.id),
 });
+exports.walkthroughApprovals = (0, pg_core_1.pgTable)('walkthrough_approvals', {
+    id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
+    versionId: (0, pg_core_1.uuid)('version_id').references(() => exports.walkthroughVersions.id, { onDelete: 'cascade' }).notNull(),
+    userId: (0, pg_core_1.uuid)('user_id').references(() => exports.users.id, { onDelete: 'cascade' }).notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+}, (table) => ({
+    uniqueApproval: (0, pg_core_1.uniqueIndex)('walkthrough_approvals_version_user_idx').on(table.versionId, table.userId),
+}));
 // =====================================================
 // PROJECT MEMBERSHIP & COLLABORATION
 // =====================================================
@@ -269,12 +313,47 @@ exports.notifications = (0, pg_core_1.pgTable)('notifications', {
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
 // =====================================================
+// TENANT LLM KEYS (Scoped API keys for AI providers)
+// =====================================================
+exports.tenantLlmKeys = (0, pg_core_1.pgTable)('tenant_llm_keys', {
+    id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
+    organizationId: (0, pg_core_1.uuid)('organization_id').references(() => exports.organizations.id, { onDelete: 'cascade' }),
+    projectId: (0, pg_core_1.uuid)('project_id').references(() => exports.projects.id, { onDelete: 'cascade' }),
+    provider: (0, pg_core_1.text)('provider', { enum: ['google', 'groq', 'openai', 'anthropic'] }).notNull(),
+    modelId: (0, pg_core_1.text)('model_id').notNull(), // e.g., 'gpt-4o', 'claude-sonnet-4-20250514'
+    encryptedApiKey: (0, pg_core_1.text)('encrypted_api_key').notNull(), // AES-256-GCM encrypted
+    isActive: (0, pg_core_1.boolean)('is_active').default(true).notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
+}, (table) => ({
+    uniqueOrgProvider: (0, pg_core_1.uniqueIndex)('tenant_llm_keys_org_provider_idx').on(table.organizationId, table.provider),
+    uniqueProjectProvider: (0, pg_core_1.uniqueIndex)('tenant_llm_keys_project_provider_idx').on(table.projectId, table.provider),
+}));
+// =====================================================
 // RELATIONS
 // =====================================================
-exports.organizationsRelations = (0, drizzle_orm_1.relations)(exports.organizations, ({ many }) => ({
+exports.subscriptionPlansRelations = (0, drizzle_orm_1.relations)(exports.subscriptionPlans, ({ many }) => ({
+    organizations: many(exports.organizations),
+}));
+exports.organizationsRelations = (0, drizzle_orm_1.relations)(exports.organizations, ({ one, many }) => ({
+    plan: one(exports.subscriptionPlans, {
+        fields: [exports.organizations.planId],
+        references: [exports.subscriptionPlans.id]
+    }),
     users: many(exports.users),
     projects: many(exports.projects),
     members: many(exports.organizationMembers),
+    llmKeys: many(exports.tenantLlmKeys),
+}));
+exports.tenantLlmKeysRelations = (0, drizzle_orm_1.relations)(exports.tenantLlmKeys, ({ one }) => ({
+    organization: one(exports.organizations, {
+        fields: [exports.tenantLlmKeys.organizationId],
+        references: [exports.organizations.id]
+    }),
+    project: one(exports.projects, {
+        fields: [exports.tenantLlmKeys.projectId],
+        references: [exports.projects.id]
+    }),
 }));
 exports.usersRelations = (0, drizzle_orm_1.relations)(exports.users, ({ one, many }) => ({
     organization: one(exports.organizations, {
@@ -395,7 +474,7 @@ exports.walkthroughActorsRelations = (0, drizzle_orm_1.relations)(exports.walkth
         references: [exports.actors.id]
     }),
 }));
-exports.walkthroughVersionsRelations = (0, drizzle_orm_1.relations)(exports.walkthroughVersions, ({ one }) => ({
+exports.walkthroughVersionsRelations = (0, drizzle_orm_1.relations)(exports.walkthroughVersions, ({ one, many }) => ({
     walkthrough: one(exports.walkthroughs, {
         fields: [exports.walkthroughVersions.walkthroughId],
         references: [exports.walkthroughs.id]
@@ -407,6 +486,17 @@ exports.walkthroughVersionsRelations = (0, drizzle_orm_1.relations)(exports.walk
     restoredFromVersion: one(exports.walkthroughVersions, {
         fields: [exports.walkthroughVersions.restoredFrom],
         references: [exports.walkthroughVersions.id]
+    }),
+    approvals: many(exports.walkthroughApprovals)
+}));
+exports.walkthroughApprovalsRelations = (0, drizzle_orm_1.relations)(exports.walkthroughApprovals, ({ one }) => ({
+    version: one(exports.walkthroughVersions, {
+        fields: [exports.walkthroughApprovals.versionId],
+        references: [exports.walkthroughVersions.id]
+    }),
+    user: one(exports.users, {
+        fields: [exports.walkthroughApprovals.userId],
+        references: [exports.users.id]
     })
 }));
 exports.projectFavoritesRelations = (0, drizzle_orm_1.relations)(exports.projectFavorites, ({ one }) => ({

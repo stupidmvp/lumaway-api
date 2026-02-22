@@ -2,6 +2,36 @@ import { pgTable, uuid, text, timestamp, boolean, jsonb, integer, primaryKey, un
 import { relations } from 'drizzle-orm';
 
 // =====================================================
+// SUBSCRIPTION PLANS
+// =====================================================
+
+export const subscriptionPlans = pgTable('subscription_plans', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),                                              // e.g., 'Free', 'Pro', 'Enterprise'
+    tier: text('tier', { enum: ['free', 'pro', 'enterprise'] }).notNull(),
+    llmModels: jsonb('llm_models').default([]).notNull(),                       // Allowed model IDs e.g., ['gemini-1.5-flash', 'llama-3.1-70b-versatile']
+    maxRpm: integer('max_rpm').default(15).notNull(),                           // Rate limit: requests per minute
+    maxTokensMonth: integer('max_tokens_month'),                                // Monthly token cap (null = unlimited)
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =====================================================
+// SYSTEM CONFIG - SECRETS MANAGEMENT
+// =====================================================
+
+export const systemSecrets = pgTable('system_secrets', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    keyName: text('key_name').notNull().unique(),       // e.g., 'GEMINI_KEY', 'GROQ_KEY'
+    keyValue: text('key_value').notNull(),               // API key value (encrypt at rest in phase 2)
+    provider: text('provider', { enum: ['google', 'groq', 'openai', 'anthropic'] }).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// =====================================================
 // CORE ENTITIES - REGISTERED USERS & RBAC
 // =====================================================
 
@@ -10,6 +40,8 @@ export const organizations = pgTable('organizations', {
     name: text('name').notNull(),
     slug: text('slug').unique().notNull(), // URL-friendly identifier for the org
     logo: text('logo'), // S3 relative path for org logo
+    planId: uuid('plan_id').references(() => subscriptionPlans.id), // Subscription plan (null = free)
+    settings: jsonb('settings').default({}).notNull(), // Org-level settings (LLM policy, etc.)
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at')
@@ -127,6 +159,9 @@ export const walkthroughs = pgTable('walkthroughs', {
     steps: jsonb('steps').default([]).notNull(),
     tags: jsonb('tags').default([]).notNull(),
     order: integer('order').default(0).notNull(),
+    trigger: jsonb('trigger'), // { type: 'route' | 'interaction' | 'intent', value: string }
+    executionMode: text('execution_mode', { enum: ['automatic', 'suggestion', 'manual'] }).default('automatic'),
+    repeatable: boolean('repeatable').default(false),
     isPublished: boolean('is_published').default(false),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -159,11 +194,25 @@ export const walkthroughVersions = pgTable('walkthrough_versions', {
     versionNumber: integer('version_number').notNull(),
     title: text('title').notNull(),
     steps: jsonb('steps').default([]).notNull(),
+    status: text('status', { enum: ['draft', 'pending_approval', 'approved', 'rejected', 'published'] }).notNull().default('draft'),
     isPublished: boolean('is_published').default(false),
+    requestedApprovalAt: timestamp('requested_approval_at'),
+    approvedAt: timestamp('approved_at'),
+    approvedBy: uuid('approved_by').references(() => users.id),
+    rejectionReason: text('rejection_reason'),
     createdBy: uuid('created_by').references(() => users.id),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     restoredFrom: uuid('restored_from').references((): any => walkthroughVersions.id),
 });
+
+export const walkthroughApprovals = pgTable('walkthrough_approvals', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    versionId: uuid('version_id').references(() => walkthroughVersions.id, { onDelete: 'cascade' }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    uniqueApproval: uniqueIndex('walkthrough_approvals_version_user_idx').on(table.versionId, table.userId),
+}));
 
 // =====================================================
 // PROJECT MEMBERSHIP & COLLABORATION
@@ -301,13 +350,52 @@ export const notifications = pgTable('notifications', {
 });
 
 // =====================================================
+// TENANT LLM KEYS (Scoped API keys for AI providers)
+// =====================================================
+
+export const tenantLlmKeys = pgTable('tenant_llm_keys', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+    provider: text('provider', { enum: ['google', 'groq', 'openai', 'anthropic'] }).notNull(),
+    modelId: text('model_id').notNull(),                                        // e.g., 'gpt-4o', 'claude-sonnet-4-20250514'
+    encryptedApiKey: text('encrypted_api_key').notNull(),                        // AES-256-GCM encrypted
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+    uniqueOrgProvider: uniqueIndex('tenant_llm_keys_org_provider_idx').on(table.organizationId, table.provider),
+    uniqueProjectProvider: uniqueIndex('tenant_llm_keys_project_provider_idx').on(table.projectId, table.provider),
+}));
+
+// =====================================================
 // RELATIONS
 // =====================================================
 
-export const organizationsRelations = relations(organizations, ({ many }) => ({
+export const subscriptionPlansRelations = relations(subscriptionPlans, ({ many }) => ({
+    organizations: many(organizations),
+}));
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+    plan: one(subscriptionPlans, {
+        fields: [organizations.planId],
+        references: [subscriptionPlans.id]
+    }),
     users: many(users),
     projects: many(projects),
     members: many(organizationMembers),
+    llmKeys: many(tenantLlmKeys),
+}));
+
+export const tenantLlmKeysRelations = relations(tenantLlmKeys, ({ one }) => ({
+    organization: one(organizations, {
+        fields: [tenantLlmKeys.organizationId],
+        references: [organizations.id]
+    }),
+    project: one(projects, {
+        fields: [tenantLlmKeys.projectId],
+        references: [projects.id]
+    }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -440,7 +528,7 @@ export const walkthroughActorsRelations = relations(walkthroughActors, ({ one })
     }),
 }));
 
-export const walkthroughVersionsRelations = relations(walkthroughVersions, ({ one }) => ({
+export const walkthroughVersionsRelations = relations(walkthroughVersions, ({ one, many }) => ({
     walkthrough: one(walkthroughs, {
         fields: [walkthroughVersions.walkthroughId],
         references: [walkthroughs.id]
@@ -452,6 +540,18 @@ export const walkthroughVersionsRelations = relations(walkthroughVersions, ({ on
     restoredFromVersion: one(walkthroughVersions, {
         fields: [walkthroughVersions.restoredFrom],
         references: [walkthroughVersions.id]
+    }),
+    approvals: many(walkthroughApprovals)
+}));
+
+export const walkthroughApprovalsRelations = relations(walkthroughApprovals, ({ one }) => ({
+    version: one(walkthroughVersions, {
+        fields: [walkthroughApprovals.versionId],
+        references: [walkthroughVersions.id]
+    }),
+    user: one(users, {
+        fields: [walkthroughApprovals.userId],
+        references: [users.id]
     })
 }));
 

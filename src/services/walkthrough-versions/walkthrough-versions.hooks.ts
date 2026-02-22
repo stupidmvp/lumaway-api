@@ -1,6 +1,9 @@
 import { authenticate } from '../../hooks/authenticate';
 import { requireProjectAccess } from '../../hooks/requireProjectAccess';
 import { populateCreator } from './hooks/populateCreator';
+import { validateApproval } from './hooks/validateApproval';
+import { populateApprovals } from './hooks/populateApprovals';
+import { syncPublishedVersion } from './hooks/syncPublishedVersion';
 
 export const walkthroughVersionsHooks = {
     before: {
@@ -9,10 +12,25 @@ export const walkthroughVersionsHooks = {
             // Any project member can view version history
             requireProjectAccess({ minRole: 'viewer', resolveProject: 'fromWalkthrough' }),
         ],
-        get: [],
+        get: [
+            requireProjectAccess({ minRole: 'viewer', resolveProject: 'fromWalkthrough' }),
+        ],
+        create: [
+            requireProjectAccess({ minRole: 'editor', resolveProject: 'fromWalkthrough' }),
+            validateApproval
+        ],
+        patch: [
+            requireProjectAccess({ minRole: 'editor', resolveProject: 'fromWalkthrough' }),
+            validateApproval
+        ],
+        remove: [
+            requireProjectAccess({ minRole: 'owner', resolveProject: 'fromWalkthrough' }),
+        ]
     },
     after: {
-        all: [populateCreator],
+        all: [populateCreator, populateApprovals],
+        create: [syncPublishedVersion],
+        patch: [syncPublishedVersion],
     },
     error: {}
 };

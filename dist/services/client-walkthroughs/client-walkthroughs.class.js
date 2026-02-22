@@ -15,9 +15,9 @@ class ClientWalkthroughsService extends core_1.BaseService {
         super(storage);
     }
     async find(_params) { return []; }
-    async get(_id, _params) { throw new Error('Method not allowed'); }
+    async get(_id, _params) { return {}; }
+    async patch(_id, _data, _params) { return {}; }
     async create(_data, _params) { throw new Error('Method not allowed'); }
-    async patch(_id, _data, _params) { throw new Error('Method not allowed'); }
     async remove(_id, _params) { throw new Error('Method not allowed'); }
 }
 exports.ClientWalkthroughsService = ClientWalkthroughsService;

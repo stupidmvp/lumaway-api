@@ -75,6 +75,8 @@ const auth_reset_password_service_1 = require("./services/auth-reset-password/au
 // Feature services
 const project_settings_service_1 = require("./services/project-settings/project-settings.service");
 const client_walkthroughs_service_1 = require("./services/client-walkthroughs/client-walkthroughs.service");
+const client_walkthrough_versions_service_1 = require("./services/client-walkthrough-versions/client-walkthrough-versions.service");
+const client_project_service_1 = require("./services/client-project/client-project.service");
 const invitation_details_service_1 = require("./services/invitation-details/invitation-details.service");
 const invitation_accept_service_1 = require("./services/invitation-accept/invitation-accept.service");
 const invitation_reject_service_1 = require("./services/invitation-reject/invitation-reject.service");
@@ -91,11 +93,67 @@ const admin_user_roles_service_1 = require("./services/admin-user-roles/admin-us
 const admin_roles_service_1 = require("./services/admin-roles/admin-roles.service");
 const admin_role_permissions_service_1 = require("./services/admin-role-permissions/admin-role-permissions.service");
 const admin_permissions_service_1 = require("./services/admin-permissions/admin-permissions.service");
+const system_secrets_service_1 = require("./services/system-secrets/system-secrets.service");
+const tenant_llm_keys_service_1 = require("./services/tenant-llm-keys/tenant-llm-keys.service");
+const ai_chat_service_1 = require("./services/ai-chat/ai-chat.service");
+const ai_chat_reset_service_1 = require("./services/ai-chat-reset/ai-chat-reset.service");
+const http_1 = require("http");
+const socket_io_1 = require("socket.io");
+const ai_chat_socket_1 = require("./realtime/ai-chat-socket");
 dotenv.config();
 // Initialize App
 const app = new core_1.FlexApp({
     db: adapters_1.drizzleAdapter,
     port: Number(process.env.PORT) || 3001,
+    host: process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0',
+    cors: {
+        origin: ((origin, callback) => {
+            // Log for every preflight/request to see what the browser sends
+            console.log(`[CORS Check] Origin: ${origin}`);
+            // Allow all for now during debugging but reflecting to avoid standard '*' issues with credentials
+            // This is effectively "origin: true" but with manual logging
+            return callback(null, true);
+        }),
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'X-Requested-With',
+            'Accept',
+            'Origin',
+            'x-api-key',
+            'x-organization-id',
+            'x-project-id',
+            'x-actor-slug',
+            'x-luma-user-id',
+            'x-luma-locale',
+            'x-luma-session-id',
+        ],
+        exposedHeaders: ['Authorization'], // Critical for some clients to "see" the token
+    },
+});
+// Middleware for deep authentication diagnostics
+app.use((req, res, next) => {
+    const oldSend = res.send;
+    res.send = function (data) {
+        // Fix for COOP/CORP blocking in local dev
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+        if (res.statusCode === 401) {
+            const authHeader = req.headers.authorization || '';
+            const tokenSnippet = authHeader.startsWith('Bearer ')
+                ? `${authHeader.substring(0, 15)}...${authHeader.substring(authHeader.length - 5)}`
+                : 'NONE';
+            console.log(`[401 Diagnostic]`);
+            console.log(`  Path: ${req.method} ${req.path}`);
+            console.log(`  Origin: ${req.headers.origin}`);
+            console.log(`  Auth Header: ${tokenSnippet} (Total length: ${authHeader.length})`);
+            console.log(`  JWT_SECRET present: ${process.env.JWT_SECRET ? 'YES' : 'NO'}`);
+        }
+        return oldSend.apply(res, arguments);
+    };
+    next();
 });
 // Configure Auth
 const jwtSecret = process.env.JWT_SECRET || 'default-secret';
@@ -155,6 +213,8 @@ app.registerService('auth-reset-password', auth_reset_password_service_1.authRes
 // Features
 app.registerService('project-settings', project_settings_service_1.projectSettingsService);
 app.registerService('client-walkthroughs', client_walkthroughs_service_1.clientWalkthroughsService);
+app.registerService('client-walkthrough-versions', client_walkthrough_versions_service_1.clientWalkthroughVersionsService);
+app.registerService('client-project', client_project_service_1.clientProjectService);
 app.registerService('invitation-details', invitation_details_service_1.invitationDetailsService);
 app.registerService('invitation-accept', invitation_accept_service_1.invitationAcceptService);
 app.registerService('invitation-reject', invitation_reject_service_1.invitationRejectService);
@@ -172,7 +232,24 @@ app.registerService('admin-user-roles', admin_user_roles_service_1.adminUserRole
 app.registerService('admin-roles', admin_roles_service_1.adminRolesService);
 app.registerService('admin-role-permissions', admin_role_permissions_service_1.adminRolePermissionsService);
 app.registerService('admin-permissions', admin_permissions_service_1.adminPermissionsService);
-// Start Server
-app.listen().then(() => {
-    console.log(`🚀 LumaWay API (Flex + Auth) running on port ${process.env.PORT || 3001}`);
+app.registerService('system-secrets', system_secrets_service_1.systemSecretsService);
+app.registerService('tenant-llm-keys', tenant_llm_keys_service_1.tenantLlmKeysService);
+// AI
+app.registerService('ai-chat', ai_chat_service_1.aiChatService);
+app.registerService('ai-chat-reset', ai_chat_reset_service_1.aiChatResetService);
+// Start Server (HTTP + Socket.IO)
+const expressApp = app.getApp();
+const httpServer = (0, http_1.createServer)(expressApp);
+const io = new socket_io_1.Server(httpServer, {
+    cors: {
+        origin: true,
+        credentials: true,
+        methods: ['GET', 'POST'],
+    },
+});
+(0, ai_chat_socket_1.setupAiChatSocket)(io);
+const port = Number(process.env.PORT) || 3001;
+const host = process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';
+httpServer.listen(port, host, () => {
+    console.log(`🚀 LumaWay API (Flex + Auth + Socket.IO) running on http://${host}:${port}`);
 });

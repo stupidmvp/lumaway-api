@@ -10,6 +10,7 @@ const filterByTags_1 = require("./hooks/filterByTags");
 const filterByActorId_1 = require("./hooks/filterByActorId");
 const searchWalkthroughs_1 = require("./hooks/searchWalkthroughs");
 const castQuery_1 = require("../../hooks/castQuery");
+const validateOrchestration_1 = require("./hooks/validateOrchestration");
 exports.walkthroughsHooks = {
     before: {
         all: [authenticate_1.authenticate],
@@ -27,10 +28,12 @@ exports.walkthroughsHooks = {
         update: [
             // context.id IS the walkthrough — resolve project from it
             (0, requireProjectAccess_1.requireProjectAccess)({ minRole: 'editor', resolveProject: 'fromWalkthroughSelf' }),
+            validateOrchestration_1.validateOrchestration, // Validate orchestration structure before publishing
             (0, createVersionOnUpdate_1.captureStateBeforeUpdate)(),
         ],
         patch: [
             (0, requireProjectAccess_1.requireProjectAccess)({ minRole: 'editor', resolveProject: 'fromWalkthroughSelf' }),
+            validateOrchestration_1.validateOrchestration, // Validate orchestration structure before publishing
             (0, createVersionOnUpdate_1.captureStateBeforeUpdate)(),
         ],
         remove: [

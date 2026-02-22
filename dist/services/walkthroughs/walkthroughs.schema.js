@@ -8,7 +8,8 @@ exports.walkthroughsSchema = (0, drizzle_zod_1.createSelectSchema)(schema_1.walk
 exports.stepSchema = zod_1.z.object({
     id: zod_1.z.string(),
     title: zod_1.z.string().min(1),
-    content: zod_1.z.string(),
+    description: zod_1.z.string(),
+    purpose: zod_1.z.string().optional(),
     target: zod_1.z.string().optional(),
     placement: zod_1.z.enum([
         'auto',
@@ -17,6 +18,7 @@ exports.stepSchema = zod_1.z.object({
         'left', 'left-start', 'left-end',
         'right', 'right-start', 'right-end',
     ]).default('auto'),
+    metadata: zod_1.z.record(zod_1.z.any()).optional(),
 });
 exports.walkthroughsCreateSchema = (0, drizzle_zod_1.createInsertSchema)(schema_1.walkthroughs, {
     projectId: zod_1.z.string().uuid(),

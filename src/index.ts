@@ -44,6 +44,8 @@ import { authResetPasswordService } from './services/auth-reset-password/auth-re
 // Feature services
 import { projectSettingsService } from './services/project-settings/project-settings.service';
 import { clientWalkthroughsService } from './services/client-walkthroughs/client-walkthroughs.service';
+import { clientWalkthroughVersionsService } from './services/client-walkthrough-versions/client-walkthrough-versions.service';
+import { clientProjectService } from './services/client-project/client-project.service';
 import { invitationDetailsService } from './services/invitation-details/invitation-details.service';
 import { invitationAcceptService } from './services/invitation-accept/invitation-accept.service';
 import { invitationRejectService } from './services/invitation-reject/invitation-reject.service';
@@ -61,6 +63,13 @@ import { adminUserRolesService } from './services/admin-user-roles/admin-user-ro
 import { adminRolesService } from './services/admin-roles/admin-roles.service';
 import { adminRolePermissionsService } from './services/admin-role-permissions/admin-role-permissions.service';
 import { adminPermissionsService } from './services/admin-permissions/admin-permissions.service';
+import { systemSecretsService } from './services/system-secrets/system-secrets.service';
+import { tenantLlmKeysService } from './services/tenant-llm-keys/tenant-llm-keys.service';
+import { aiChatService } from './services/ai-chat/ai-chat.service';
+import { aiChatResetService } from './services/ai-chat-reset/ai-chat-reset.service';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import { setupAiChatSocket } from './realtime/ai-chat-socket';
 
 dotenv.config();
 
@@ -68,7 +77,7 @@ dotenv.config();
 const app = new FlexApp({
     db: drizzleAdapter,
     port: Number(process.env.PORT) || 3001,
-    host: '0.0.0.0',
+    host: process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0',
     cors: {
         origin: ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
             // Log for every preflight/request to see what the browser sends
@@ -80,7 +89,20 @@ const app = new FlexApp({
         }) as any,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-api-key', 'x-organization-id', 'x-project-id'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'X-Requested-With',
+            'Accept',
+            'Origin',
+            'x-api-key',
+            'x-organization-id',
+            'x-project-id',
+            'x-actor-slug',
+            'x-luma-user-id',
+            'x-luma-locale',
+            'x-luma-session-id',
+        ],
         exposedHeaders: ['Authorization'], // Critical for some clients to "see" the token
     } as any,
 });
@@ -89,6 +111,10 @@ const app = new FlexApp({
 app.use((req, res, next) => {
     const oldSend = res.send;
     res.send = function (data) {
+        // Fix for COOP/CORP blocking in local dev
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+
         if (res.statusCode === 401) {
             const authHeader = req.headers.authorization || '';
             const tokenSnippet = authHeader.startsWith('Bearer ')
@@ -180,6 +206,8 @@ app.registerService('auth-reset-password', authResetPasswordService);
 // Features
 app.registerService('project-settings', projectSettingsService);
 app.registerService('client-walkthroughs', clientWalkthroughsService);
+app.registerService('client-walkthrough-versions', clientWalkthroughVersionsService);
+app.registerService('client-project', clientProjectService);
 app.registerService('invitation-details', invitationDetailsService);
 app.registerService('invitation-accept', invitationAcceptService);
 app.registerService('invitation-reject', invitationRejectService);
@@ -200,8 +228,28 @@ app.registerService('admin-user-roles', adminUserRolesService);
 app.registerService('admin-roles', adminRolesService);
 app.registerService('admin-role-permissions', adminRolePermissionsService);
 app.registerService('admin-permissions', adminPermissionsService);
+app.registerService('system-secrets', systemSecretsService);
+app.registerService('tenant-llm-keys', tenantLlmKeysService);
 
-// Start Server
-app.listen().then(() => {
-    console.log(`🚀 LumaWay API (Flex + Auth) running on port ${process.env.PORT || 3001}`);
+// AI
+app.registerService('ai-chat', aiChatService);
+app.registerService('ai-chat-reset', aiChatResetService);
+
+// Start Server (HTTP + Socket.IO)
+const expressApp = app.getApp();
+const httpServer = createServer(expressApp);
+const io = new SocketIOServer(httpServer, {
+    cors: {
+        origin: true,
+        credentials: true,
+        methods: ['GET', 'POST'],
+    },
+});
+
+setupAiChatSocket(io);
+
+const port = Number(process.env.PORT) || 3001;
+const host = process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';
+httpServer.listen(port, host, () => {
+    console.log(`🚀 LumaWay API (Flex + Auth + Socket.IO) running on http://${host}:${port}`);
 });

@@ -7,6 +7,7 @@ import { filterByTags } from './hooks/filterByTags';
 import { filterByActorId } from './hooks/filterByActorId';
 import { searchWalkthroughs } from './hooks/searchWalkthroughs';
 import { castQuery } from '../../hooks/castQuery';
+import { validateOrchestration } from './hooks/validateOrchestration';
 
 export const walkthroughsHooks = {
     before: {
@@ -25,10 +26,12 @@ export const walkthroughsHooks = {
         update: [
             // context.id IS the walkthrough — resolve project from it
             requireProjectAccess({ minRole: 'editor', resolveProject: 'fromWalkthroughSelf' }),
+            validateOrchestration, // Validate orchestration structure before publishing
             captureStateBeforeUpdate(),
         ],
         patch: [
             requireProjectAccess({ minRole: 'editor', resolveProject: 'fromWalkthroughSelf' }),
+            validateOrchestration, // Validate orchestration structure before publishing
             captureStateBeforeUpdate(),
         ],
         remove: [

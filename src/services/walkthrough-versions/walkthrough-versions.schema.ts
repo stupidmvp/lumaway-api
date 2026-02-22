@@ -5,7 +5,12 @@ export const createVersionSchema = z.object({
     versionNumber: z.number().int().positive(),
     title: z.string(),
     steps: z.array(z.any()),
-    isPublished: z.boolean(),
+    status: z.enum(['draft', 'pending_approval', 'approved', 'rejected', 'published']).default('draft'),
+    isPublished: z.boolean().default(false),
+    requestedApprovalAt: z.string().datetime().optional().nullable(),
+    approvedAt: z.string().datetime().optional().nullable(),
+    approvedBy: z.string().uuid().optional().nullable(),
+    rejectionReason: z.string().optional().nullable(),
     createdBy: z.string().uuid().optional(),
     restoredFrom: z.string().uuid().optional()
 });

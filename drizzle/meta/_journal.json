@@ -50,6 +50,13 @@
       "when": 1771330435968,
       "tag": "0006_heavy_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1771524910089,
+      "tag": "0007_crazy_lethal_legion",
+      "breakpoints": true
     }
   ]
 }

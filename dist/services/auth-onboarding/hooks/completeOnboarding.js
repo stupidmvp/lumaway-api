@@ -30,10 +30,17 @@ const completeOnboarding = async (context) => {
     if (existingOrg.length > 0) {
         throw new Error('This organization slug is already taken');
     }
-    // Create the organization
+    // Resolve free plan for new organizations
+    const [freePlan] = await adapters_1.db
+        .select({ id: schema_1.subscriptionPlans.id })
+        .from(schema_1.subscriptionPlans)
+        .where((0, drizzle_orm_1.eq)(schema_1.subscriptionPlans.tier, 'free'))
+        .limit(1);
+    // Create the organization (defaults to free plan)
     const [org] = await adapters_1.db.insert(schema_1.organizations).values({
         name: organizationName,
         slug: organizationSlug,
+        ...(freePlan ? { planId: freePlan.id } : {}),
     }).returning();
     // Add user as owner of the organization
     await adapters_1.db.insert(schema_1.organizationMembers).values({

@@ -3,7 +3,8 @@ import {
     users, roles, userRoles, permissions, modules, rolePermissions,
     organizations, organizationMembers, projects, apiKeys, walkthroughs,
     walkthroughVersions, projectMembers, projectInvitations, comments,
-    commentAttachments, commentMentions, notifications
+    commentAttachments, commentMentions, notifications, systemSecrets,
+    subscriptionPlans, tenantLlmKeys
 } from '../../src/db/schema';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -26,6 +27,8 @@ async function runSeeds() {
 
         // Clean DB - delete in reverse dependency order
         console.log('🗑️  Cleaning database...');
+        await db.delete(tenantLlmKeys);
+        await db.delete(systemSecrets);
         await db.delete(commentMentions);
         await db.delete(commentAttachments);
         await db.delete(comments);
@@ -44,6 +47,7 @@ async function runSeeds() {
         await db.delete(users);
         await db.delete(roles);
         await db.delete(organizations);
+        await db.delete(subscriptionPlans);
         console.log('   ✅ Database cleaned.\n');
 
         const seedsDir = __dirname;
@@ -106,6 +110,14 @@ async function runSeeds() {
         if (context.projects) {
             Object.values(context.projects).forEach((p: any) => {
                 console.log(`   - ${p.name} (org: ${p.organizationId}, status: ${p.status})`);
+            });
+        }
+
+        console.log('\n🔐 SYSTEM SECRETS Seeded:');
+        if (context.systemSecrets) {
+            context.systemSecrets.forEach((s: any) => {
+                const masked = s.keyValue.length > 4 ? `${'•'.repeat(s.keyValue.length - 4)}${s.keyValue.slice(-4)}` : '••••';
+                console.log(`   - ${s.keyName} (${s.provider}): ${masked}`);
             });
         }
 

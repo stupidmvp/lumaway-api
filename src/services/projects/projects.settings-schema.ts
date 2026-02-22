@@ -15,6 +15,7 @@ export const projectSettingsSchema = z.object({
     assistantEnabled: z.boolean().optional(),
     assistantName: z.string().max(100).optional(),
     assistantWelcomeMessage: z.string().max(500).optional(),
+    assistantSystemPrompt: z.string().max(2000).optional(), // System prompt for AI personality and business context
     chatbotEnabled: z.boolean().optional(),
 
     // ── Security ─────────────────────────────────────────────────────────
@@ -31,10 +32,21 @@ export const projectSettingsSchema = z.object({
     viewerCanComment: z.boolean().optional(),
     viewerCanExport: z.boolean().optional(),
 
+    // ── Approval Workflow ────────────────────────────────────────────────
+    approvalRequired: z.boolean().optional(),
+    minApprovals: z.number().int().min(1).optional(),
+    reviewerUserIds: z.array(z.string().uuid()).optional(),
+
     // ── Notifications — project lifecycle ───────────────────────────────
     notifyOnPublish: z.boolean().optional(),
     notifyOnNewMember: z.boolean().optional(),
     notifyOnWalkthroughUpdate: z.boolean().optional(),
+
+    // ── LLM Configuration ──────────────────────────────────────────────
+    // Only used when org plan is Enterprise + policy is 'project_delegated'.
+    // Key is stored in tenant_llm_keys table, NOT here.
+    llmProvider: z.enum(['google', 'groq', 'openai', 'anthropic']).optional(),
+    llmModelId: z.string().max(100).optional(),
 
     // ── Notifications — comment activity ─────────────────────────────
     // Project-level gates: if OFF, no member receives this notification type
@@ -44,6 +56,17 @@ export const projectSettingsSchema = z.object({
     notifyOnCorrection: z.boolean().optional(),
     notifyOnResolved: z.boolean().optional(),
     notifyOnAnnouncement: z.boolean().optional(),
+
+    // ── WebMCP Configuration ────────────────────────────────────────
+    // Controls whether Luma can interact with the DOM via WebMCP
+    webMCP: z.object({
+        enabled: z.boolean().optional(),
+        permissionLevel: z.enum(['none', 'readonly', 'guided', 'automatic']).optional(),
+        allowedActions: z.array(z.enum(['click', 'fill', 'navigate', 'scroll', 'select'])).optional(),
+        allowedSelectors: z.array(z.string()).optional(), // CSS selector whitelist
+        blockedSelectors: z.array(z.string()).optional(), // CSS selector blacklist
+        requireConfirmation: z.boolean().optional(), // Always ask before actions
+    }).optional(),
 }).strict();
 
 export type ProjectSettings = z.infer<typeof projectSettingsSchema>;
@@ -58,6 +81,7 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
     assistantEnabled: false,
     assistantName: 'LumaWay Assistant',
     assistantWelcomeMessage: 'Hi! How can I help you today?',
+    assistantSystemPrompt: undefined, // No default - each project defines its own personality
     chatbotEnabled: false,
 
     // Security
@@ -73,6 +97,11 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
     viewerCanComment: true,
     viewerCanExport: true,
 
+    // Approval Workflow
+    approvalRequired: false,
+    minApprovals: 1,
+    reviewerUserIds: [],
+
     // Notifications — project lifecycle
     notifyOnPublish: true,
     notifyOnNewMember: true,
@@ -85,6 +114,16 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
     notifyOnCorrection: true,
     notifyOnResolved: true,
     notifyOnAnnouncement: true,
+
+    // WebMCP (disabled by default for security)
+    webMCP: {
+        enabled: false,
+        permissionLevel: 'none',
+        allowedActions: [],
+        allowedSelectors: [],
+        blockedSelectors: [],
+        requireConfirmation: true,
+    },
 };
 
 

@@ -7,7 +7,8 @@ export const walkthroughsSchema = createSelectSchema(walkthroughs);
 export const stepSchema = z.object({
     id: z.string(),
     title: z.string().min(1),
-    content: z.string(),
+    description: z.string(),
+    purpose: z.string().optional(),
     target: z.string().optional(),
     placement: z.enum([
         'auto',
@@ -16,6 +17,7 @@ export const stepSchema = z.object({
         'left', 'left-start', 'left-end',
         'right', 'right-start', 'right-end',
     ]).default('auto'),
+    metadata: z.record(z.any()).optional(),
 });
 
 export const walkthroughsCreateSchema = createInsertSchema(walkthroughs, {

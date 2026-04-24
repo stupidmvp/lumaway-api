@@ -82,6 +82,21 @@ import { setupSocketHeartbeat } from './realtime/socket-heartbeat';
 
 dotenv.config();
 
+const defaultCorsAllowHeaders = [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'x-api-key',
+    'x-organization-id',
+    'x-project-id',
+    'x-actor-slug',
+    'x-luma-user-id',
+    'x-luma-locale',
+    'x-luma-session-id',
+].join(', ');
+
 // Initialize App
 const app = new FlexApp({
     db: drizzleAdapter,
@@ -98,22 +113,35 @@ const app = new FlexApp({
         }) as any,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: [
-            'Content-Type',
-            'Authorization',
-            'X-Requested-With',
-            'Accept',
-            'Origin',
-            'x-api-key',
-            'x-organization-id',
-            'x-project-id',
-            'x-actor-slug',
-            'x-luma-user-id',
-            'x-luma-locale',
-            'x-luma-session-id',
-        ],
+        allowedHeaders: defaultCorsAllowHeaders.split(', '),
         exposedHeaders: ['Authorization'], // Critical for some clients to "see" the token
+        maxAge: 86400,
+        optionsSuccessStatus: 204,
     } as any,
+});
+
+const expressApp = app.getApp();
+
+// Mirror the caller's requested headers/origin so browser preflights with custom
+// SDK headers (x-api-key, x-luma-session-id, etc.) always succeed.
+expressApp.use((req, res, next) => {
+    const requestOrigin = req.headers.origin as string | undefined;
+    const requestHeaders = req.headers['access-control-request-headers'] as string | undefined;
+
+    res.header('Access-Control-Allow-Origin', requestOrigin || '*');
+    res.header('Vary', 'Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.header(
+        'Access-Control-Allow-Headers',
+        requestHeaders || defaultCorsAllowHeaders
+    );
+
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+
+    next();
 });
 
 // Middleware for deep authentication diagnostics
@@ -252,13 +280,16 @@ app.registerService('ai-chat', aiChatService);
 app.registerService('ai-chat-reset', aiChatResetService);
 
 // Start Server (HTTP + Socket.IO)
-const expressApp = app.getApp();
 const httpServer = createServer(expressApp);
 const io = new SocketIOServer(httpServer, {
     cors: {
-        origin: true,
+        origin: ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+            return callback(null, true);
+        }) as any,
         credentials: true,
-        methods: ['GET', 'POST'],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: defaultCorsAllowHeaders.split(', '),
+        maxAge: 86400,
     },
 });
 

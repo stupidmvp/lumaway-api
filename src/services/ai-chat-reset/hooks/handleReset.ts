@@ -36,7 +36,7 @@ export const handleReset = async (context: any) => {
     const sessionId = typeof sessionIdHeader === 'string' && sessionIdHeader.trim() ? sessionIdHeader.trim() : undefined;
 
     // ── Clear conversation history ──────────────────────────────────────
-    conversationStore.clear(projectId, { userId, actorSlug, sessionId });
+    await conversationStore.clear(projectId, { userId, actorSlug, sessionId });
 
     context.result = {
         success: true,

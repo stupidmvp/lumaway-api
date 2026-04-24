@@ -9,6 +9,13 @@ import type { OrgSettings } from '../../services/organizations/organizations.set
 // Provider enum type matching the DB column
 type ProviderEnum = 'google' | 'groq' | 'openai' | 'anthropic';
 
+export interface ResolvedProviderApiKey {
+    provider: LLMProviderName;
+    apiKey: string;
+    modelId?: string;
+    source: 'project' | 'organization';
+}
+
 /**
  * LLM Resolver - Multi-tenant credential resolution.
  *
@@ -142,4 +149,70 @@ async function resolveProjectConfig(projectId: string): Promise<ResolvedConfig |
     if (!projSettings.llmProvider) return null;
 
     return resolveKeyForScope('project', projectId, projSettings.llmProvider, projSettings.llmModelId);
+}
+
+/**
+ * Resolve a raw provider API key for a project scope, with org fallback.
+ *
+ * This is useful for APIs that are not routed through `generateText/generateObject`
+ * (for example, transcription endpoints that require direct HTTP calls).
+ */
+export async function resolveProviderApiKeyForProject(
+    projectId: string,
+    provider: LLMProviderName
+): Promise<ResolvedProviderApiKey | null> {
+    const projectRows = await db
+        .select({ organizationId: projects.organizationId })
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+    const project = projectRows[0];
+    if (!project) return null;
+
+    const projectKeyRows = await db
+        .select({
+            encryptedApiKey: tenantLlmKeys.encryptedApiKey,
+            modelId: tenantLlmKeys.modelId,
+        })
+        .from(tenantLlmKeys)
+        .where(and(
+            eq(tenantLlmKeys.projectId, projectId),
+            eq(tenantLlmKeys.provider, provider as ProviderEnum),
+            eq(tenantLlmKeys.isActive, true),
+        ))
+        .limit(1);
+
+    const projectKey = projectKeyRows[0];
+    if (projectKey) {
+        return {
+            provider,
+            apiKey: decryptApiKey(projectKey.encryptedApiKey),
+            modelId: projectKey.modelId,
+            source: 'project',
+        };
+    }
+
+    const orgKeyRows = await db
+        .select({
+            encryptedApiKey: tenantLlmKeys.encryptedApiKey,
+            modelId: tenantLlmKeys.modelId,
+        })
+        .from(tenantLlmKeys)
+        .where(and(
+            eq(tenantLlmKeys.organizationId, project.organizationId),
+            eq(tenantLlmKeys.provider, provider as ProviderEnum),
+            eq(tenantLlmKeys.isActive, true),
+        ))
+        .limit(1);
+
+    const orgKey = orgKeyRows[0];
+    if (!orgKey) return null;
+
+    return {
+        provider,
+        apiKey: decryptApiKey(orgKey.encryptedApiKey),
+        modelId: orgKey.modelId,
+        source: 'organization',
+    };
 }

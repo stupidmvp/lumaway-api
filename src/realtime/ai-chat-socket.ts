@@ -20,10 +20,15 @@ function toHeaderRecord(value: unknown): Record<string, string> {
 
 export function setupAiChatSocket(io: SocketIOServer) {
     io.on('connection', (socket: Socket) => {
+        console.log(`[Socket.IO] connected: ${socket.id}`);
+        socket.on('disconnect', (reason) => {
+            console.log(`[Socket.IO] disconnected: ${socket.id} (${reason})`);
+        });
         socket.on('ai-chat:send', async (payload: ChatSendPayload = {}) => {
             const requestId = payload.requestId || crypto.randomUUID();
             const message = typeof payload.message === 'string' ? payload.message.trim() : '';
             const headers = toHeaderRecord(payload.headers);
+            console.log(`[Socket.IO][ai-chat:send] socket=${socket.id} requestId=${requestId} messageLen=${message.length}`);
 
             if (!message) {
                 socket.emit('ai-chat:error', {

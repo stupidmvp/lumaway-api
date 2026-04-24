@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, jsonb, integer, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, boolean, jsonb, integer, primaryKey, uniqueIndex, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // =====================================================
@@ -214,6 +214,72 @@ export const walkthroughApprovals = pgTable('walkthrough_approvals', {
     uniqueApproval: uniqueIndex('walkthrough_approvals_version_user_idx').on(table.versionId, table.userId),
 }));
 
+export const observerSessions = pgTable('observer_sessions', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    intent: text('intent'),
+    status: text('status', {
+        enum: ['recording', 'uploaded', 'processing', 'ready_for_review', 'failed', 'cancelled']
+    }).notNull().default('recording'),
+    videoS3Key: text('video_s3_key'),
+    captureSource: text('capture_source', {
+        enum: ['dom', 'webmcp', 'hybrid', 'unknown']
+    }).notNull().default('dom'),
+    videoDurationMs: integer('video_duration_ms'),
+    processingSummary: jsonb('processing_summary').default({}).notNull(),
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    endedAt: timestamp('ended_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+    byProject: index('observer_sessions_project_idx').on(table.projectId),
+    byStatus: index('observer_sessions_status_idx').on(table.status),
+}));
+
+export const observerEvents = pgTable('observer_events', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    observerSessionId: uuid('observer_session_id').references(() => observerSessions.id, { onDelete: 'cascade' }).notNull(),
+    type: text('type', {
+        enum: ['click', 'input', 'change', 'navigation', 'scroll', 'custom']
+    }).notNull(),
+    timestampMs: integer('timestamp_ms').notNull(),
+    url: text('url'),
+    targetSelector: text('target_selector'),
+    label: text('label'),
+    payload: jsonb('payload').default({}).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    bySessionTimestamp: index('observer_events_session_ts_idx').on(table.observerSessionId, table.timestampMs),
+}));
+
+export const observerChapters = pgTable('observer_chapters', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    observerSessionId: uuid('observer_session_id').references(() => observerSessions.id, { onDelete: 'cascade' }).notNull(),
+    startMs: integer('start_ms').notNull(),
+    endMs: integer('end_ms').notNull(),
+    title: text('title').notNull(),
+    summary: text('summary'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    bySessionStart: index('observer_chapters_session_start_idx').on(table.observerSessionId, table.startMs),
+}));
+
+export const observerStepCandidates = pgTable('observer_step_candidates', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    observerSessionId: uuid('observer_session_id').references(() => observerSessions.id, { onDelete: 'cascade' }).notNull(),
+    order: integer('order').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    targetSelector: text('target_selector'),
+    timestampMs: integer('timestamp_ms').notNull(),
+    confidence: integer('confidence').default(0).notNull(), // 0..100
+    metadata: jsonb('metadata').default({}).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    bySessionOrder: index('observer_step_candidates_session_order_idx').on(table.observerSessionId, table.order),
+}));
+
 // =====================================================
 // PROJECT MEMBERSHIP & COLLABORATION
 // =====================================================
@@ -407,6 +473,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     projects: many(projects), // Projects created by user
     organizationMemberships: many(organizationMembers),
     projectFavorites: many(projectFavorites),
+    observerSessions: many(observerSessions),
 }));
 
 export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
@@ -436,6 +503,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     comments: many(comments),
     actors: many(actors),
     favorites: many(projectFavorites),
+    observerSessions: many(observerSessions),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({
@@ -553,6 +621,41 @@ export const walkthroughApprovalsRelations = relations(walkthroughApprovals, ({ 
         fields: [walkthroughApprovals.userId],
         references: [users.id]
     })
+}));
+
+export const observerSessionsRelations = relations(observerSessions, ({ one, many }) => ({
+    project: one(projects, {
+        fields: [observerSessions.projectId],
+        references: [projects.id]
+    }),
+    creator: one(users, {
+        fields: [observerSessions.createdBy],
+        references: [users.id]
+    }),
+    events: many(observerEvents),
+    chapters: many(observerChapters),
+    stepCandidates: many(observerStepCandidates),
+}));
+
+export const observerEventsRelations = relations(observerEvents, ({ one }) => ({
+    session: one(observerSessions, {
+        fields: [observerEvents.observerSessionId],
+        references: [observerSessions.id]
+    }),
+}));
+
+export const observerChaptersRelations = relations(observerChapters, ({ one }) => ({
+    session: one(observerSessions, {
+        fields: [observerChapters.observerSessionId],
+        references: [observerSessions.id]
+    }),
+}));
+
+export const observerStepCandidatesRelations = relations(observerStepCandidates, ({ one }) => ({
+    session: one(observerSessions, {
+        fields: [observerStepCandidates.observerSessionId],
+        references: [observerSessions.id]
+    }),
 }));
 
 export const projectFavoritesRelations = relations(projectFavorites, ({ one }) => ({

@@ -13,10 +13,22 @@ export const projectSettingsSchema = z.object({
 
     // ── Assistant / Chatbot ──────────────────────────────────────────────
     assistantEnabled: z.boolean().optional(),
+    defaultLocale: z.string().max(16).optional(), // e.g. es, es-CO, en, en-US
+    supportedLocales: z.array(z.string().max(16)).optional(),
     assistantName: z.string().max(100).optional(),
     assistantWelcomeMessage: z.string().max(500).optional(),
     assistantSystemPrompt: z.string().max(2000).optional(), // System prompt for AI personality and business context
     chatbotEnabled: z.boolean().optional(),
+    chatbotUi: z.object({
+        template: z.enum(['default', 'compact', 'minimal']).optional(),
+        position: z.enum(['bottom-right', 'bottom-left']).optional(),
+        primaryColor: z.string().max(32).optional(),
+        secondaryColor: z.string().max(32).optional(),
+        surfaceColor: z.string().max(32).optional(),
+        chatWidth: z.number().int().min(300).max(560).optional(),
+        chatHeight: z.number().int().min(420).max(760).optional(),
+        triggerSize: z.number().int().min(48).max(88).optional(),
+    }).optional(),
 
     // ── Security ─────────────────────────────────────────────────────────
     requireApiKey: z.boolean().optional(),
@@ -67,6 +79,15 @@ export const projectSettingsSchema = z.object({
         blockedSelectors: z.array(z.string()).optional(), // CSS selector blacklist
         requireConfirmation: z.boolean().optional(), // Always ask before actions
     }).optional(),
+
+    // ── Observer Mode (training mode) ────────────────────────────────
+    observerMode: z.object({
+        enabled: z.boolean().optional(),
+        allowedDomains: z.array(z.string()).optional(),
+        captureAudio: z.boolean().optional(),
+        requireHumanApproval: z.boolean().optional(),
+        retentionDays: z.number().int().min(1).max(365).optional(),
+    }).optional(),
 }).strict();
 
 export type ProjectSettings = z.infer<typeof projectSettingsSchema>;
@@ -79,10 +100,22 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
 
     // Assistant / Chatbot
     assistantEnabled: false,
+    defaultLocale: 'en',
+    supportedLocales: ['en'],
     assistantName: 'LumaWay Assistant',
     assistantWelcomeMessage: 'Hi! How can I help you today?',
     assistantSystemPrompt: undefined, // No default - each project defines its own personality
     chatbotEnabled: false,
+    chatbotUi: {
+        template: 'default',
+        position: 'bottom-right',
+        primaryColor: '#4f46e5',
+        secondaryColor: '#9333ea',
+        surfaceColor: '#ffffff',
+        chatWidth: 380,
+        chatHeight: 520,
+        triggerSize: 64,
+    },
 
     // Security
     requireApiKey: true,
@@ -124,6 +157,13 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
         blockedSelectors: [],
         requireConfirmation: true,
     },
+
+    // Observer Mode
+    observerMode: {
+        enabled: false,
+        allowedDomains: [],
+        captureAudio: false,
+        requireHumanApproval: true,
+        retentionDays: 90,
+    },
 };
-
-

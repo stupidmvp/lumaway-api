@@ -1,18 +1,4 @@
 import { authenticate } from '../../hooks/authenticate';
-import { encryptApiKey } from '../../utils/encryption';
-
-/**
- * Hook: Encrypt the apiKey before create/patch.
- * Transforms plain-text `apiKey` into `encryptedApiKey` and removes the plain field.
- */
-function encryptKeyBeforeSave(context: any) {
-    const data = context.data;
-    if (data?.apiKey) {
-        data.encryptedApiKey = encryptApiKey(data.apiKey);
-        delete data.apiKey;
-    }
-    return context;
-}
 
 /**
  * Hook: Redact encryptedApiKey from all responses.
@@ -42,8 +28,8 @@ export const tenantLlmKeysHooks = {
     before: {
         find: [authenticate],
         get: [authenticate],
-        create: [authenticate, encryptKeyBeforeSave],
-        patch: [authenticate, encryptKeyBeforeSave],
+        create: [authenticate],
+        patch: [authenticate],
         remove: [authenticate],
     },
     after: {

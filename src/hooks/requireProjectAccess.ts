@@ -1,5 +1,5 @@
 import { db } from '../adapters';
-import { projectMembers, walkthroughs, projects, organizationMembers, actors } from '../db/schema';
+import { projectMembers, walkthroughs, projects, organizationMembers, actors, observerSessions } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { drizzleAdapter } from '../adapters';
 import { getUserRoles } from '../utils/roles';
@@ -26,8 +26,17 @@ interface RequireProjectAccessOptions {
      * - 'fromWalkthrough': resolve projectId via walkthroughId in context.data or context.params.query
      * - 'fromWalkthroughSelf': context.id IS a walkthrough ID — resolve its projectId (for walkthrough patch/update/remove)
      * - 'fromActorSelf': context.id IS an actor ID — resolve its projectId (for actor patch/remove)
+     * - 'fromObserverSession': resolve projectId via observerSessionId in context.data or context.params.query
+     * - 'fromObserverSessionSelf': context.id IS an observer session ID — resolve its projectId
      */
-    resolveProject: 'direct' | 'fromId' | 'fromWalkthrough' | 'fromWalkthroughSelf' | 'fromActorSelf';
+    resolveProject:
+    | 'direct'
+    | 'fromId'
+    | 'fromWalkthrough'
+    | 'fromWalkthroughSelf'
+    | 'fromActorSelf'
+    | 'fromObserverSession'
+    | 'fromObserverSessionSelf';
     /** Allow the resource owner (userId match) to bypass role check (e.g., edit own comments) */
     allowResourceOwner?: boolean;
 }
@@ -115,6 +124,42 @@ export function requireProjectAccess(options: RequireProjectAccessOptions) {
                         .limit(1);
 
                     projectId = actor?.projectId;
+                }
+                break;
+            }
+
+            case 'fromObserverSession': {
+                const q = context.params?.query || context.params || {};
+                const observerSessionId =
+                    context.data?.observerSessionId ||
+                    context.data?.observer_session_id ||
+                    q.observerSessionId ||
+                    q.observer_session_id ||
+                    q.observersessionid ||
+                    resourceId;
+
+                if (observerSessionId) {
+                    const [session] = await db
+                        .select({ projectId: observerSessions.projectId })
+                        .from(observerSessions)
+                        .where(eq(observerSessions.id, observerSessionId as string))
+                        .limit(1);
+
+                    projectId = session?.projectId;
+                }
+                break;
+            }
+
+            case 'fromObserverSessionSelf': {
+                const observerSessionId = resourceId as string;
+                if (observerSessionId) {
+                    const [session] = await db
+                        .select({ projectId: observerSessions.projectId })
+                        .from(observerSessions)
+                        .where(eq(observerSessions.id, observerSessionId))
+                        .limit(1);
+
+                    projectId = session?.projectId;
                 }
                 break;
             }
@@ -209,4 +254,3 @@ export function requireProjectAccess(options: RequireProjectAccessOptions) {
     
     };
 }
-

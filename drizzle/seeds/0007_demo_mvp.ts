@@ -13,6 +13,8 @@ const db = (drizzleAdapter as any).db;
  */
 const DEMO_PROJECT_SETTINGS = {
     assistantEnabled: true,
+    defaultLocale: 'es-CO',
+    supportedLocales: ['es-CO', 'en-US'],
     assistantName: 'Luma',
     assistantWelcomeMessage: '¡Hola! Soy Luma, tu asistente de logística. Puedo guiarte por el Dashboard, crear un nuevo envío, gestionar Ajustes o revisar tu Perfil. ¿En qué puedo ayudarte hoy?',
     assistantSystemPrompt: `CONTEXTO DE PRODUCTO (LumaLogistics):
@@ -43,6 +45,16 @@ IMPORTANTE:
 - No inventes funcionalidades, métricas o pantallas inexistentes.
 - Mantén el idioma del usuario.`,
     chatbotEnabled: true,
+    chatbotUi: {
+        template: 'default',
+        position: 'bottom-right',
+        primaryColor: '#4f46e5',
+        secondaryColor: '#9333ea',
+        surfaceColor: '#ffffff',
+        chatWidth: 380,
+        chatHeight: 520,
+        triggerSize: 64,
+    },
     mode: 'guided' as const,
 };
 

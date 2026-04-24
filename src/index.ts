@@ -46,6 +46,7 @@ import { projectSettingsService } from './services/project-settings/project-sett
 import { clientWalkthroughsService } from './services/client-walkthroughs/client-walkthroughs.service';
 import { clientWalkthroughVersionsService } from './services/client-walkthrough-versions/client-walkthrough-versions.service';
 import { clientProjectService } from './services/client-project/client-project.service';
+import { clientObserverSessionsService } from './services/client-observer-sessions/client-observer-sessions.service';
 import { invitationDetailsService } from './services/invitation-details/invitation-details.service';
 import { invitationAcceptService } from './services/invitation-accept/invitation-accept.service';
 import { invitationRejectService } from './services/invitation-reject/invitation-reject.service';
@@ -56,6 +57,12 @@ import { actorsService } from './services/actors/actors.service';
 import { walkthroughActorsService } from './services/walkthrough-actors/walkthrough-actors.service';
 import { commentReactionsService } from './services/comment-reactions/comment-reactions.service';
 import { projectFavoritesService } from './services/project-favorites/project-favorites.service';
+import { observerSessionsService } from './services/observer-sessions/observer-sessions.service';
+import { observerSessionEventsService } from './services/observer-session-events/observer-session-events.service';
+import { observerSessionFinalizeService } from './services/observer-session-finalize/observer-session-finalize.service';
+import { observerSessionReviewService } from './services/observer-session-review/observer-session-review.service';
+import { observerGenerateWalkthroughService } from './services/observer-generate-walkthrough/observer-generate-walkthrough.service';
+import { observerSessionReprocessService } from './services/observer-session-reprocess/observer-session-reprocess.service';
 
 // Admin services
 import { adminUsersService } from './services/admin-users/admin-users.service';
@@ -70,6 +77,8 @@ import { aiChatResetService } from './services/ai-chat-reset/ai-chat-reset.servi
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { setupAiChatSocket } from './realtime/ai-chat-socket';
+import { setupBrowserMcpSocket } from './realtime/browser-mcp-socket';
+import { setupSocketHeartbeat } from './realtime/socket-heartbeat';
 
 dotenv.config();
 
@@ -180,6 +189,12 @@ app.registerService('comments', commentsService);
 app.registerService('comment-reactions', commentReactionsService);
 app.registerService('project-invitations', projectInvitationsService);
 app.registerService('project-favorites', projectFavoritesService);
+app.registerService('observer-sessions', observerSessionsService);
+app.registerService('observer-session-events', observerSessionEventsService);
+app.registerService('observer-session-finalize', observerSessionFinalizeService);
+app.registerService('observer-session-review', observerSessionReviewService);
+app.registerService('observer-generate-walkthrough', observerGenerateWalkthroughService);
+app.registerService('observer-session-reprocess', observerSessionReprocessService);
 app.registerService('notifications', notificationsService);
 
 // =====================================================
@@ -208,6 +223,7 @@ app.registerService('project-settings', projectSettingsService);
 app.registerService('client-walkthroughs', clientWalkthroughsService);
 app.registerService('client-walkthrough-versions', clientWalkthroughVersionsService);
 app.registerService('client-project', clientProjectService);
+app.registerService('client-observer-sessions', clientObserverSessionsService);
 app.registerService('invitation-details', invitationDetailsService);
 app.registerService('invitation-accept', invitationAcceptService);
 app.registerService('invitation-reject', invitationRejectService);
@@ -247,6 +263,8 @@ const io = new SocketIOServer(httpServer, {
 });
 
 setupAiChatSocket(io);
+setupBrowserMcpSocket(io);
+setupSocketHeartbeat(io);
 
 const port = Number(process.env.PORT) || 3001;
 const host = process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';

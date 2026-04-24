@@ -38,6 +38,7 @@ Reglas:
 - "guide": intención operativa/procedimental/paso a paso.
 - "clarify": falta información.
 - Si el mensaje es confirmatorio breve ("sí", "ok", "dale"), trátalo como continuidad del último turno.
+- Si el mensaje es breve de confirmación/ack ("sí", "ok", "super", "gracias"), NO reinicies el tema: conserva el contexto del último turno del asistente.
 - suggestedWalkthroughIds: usa solo IDs del catálogo, entre 0 y 3, priorizando relevancia y continuidad.
 - No inventes fuera del contexto publicado.
 `;
